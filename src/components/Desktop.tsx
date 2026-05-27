@@ -28,32 +28,34 @@ export default function Desktop() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      transition={{ duration: 0.5 }}
+      transition={{ duration: 0.6 }}
       data-testid="desktop"
     >
-      {/* Premium Wallpaper Background */}
-      <div className="absolute inset-0 select-none pointer-events-none z-0">
+      {/* High-Fidelity Cinematic Wallpaper Background */}
+      <div className="absolute inset-0 select-none pointer-events-none z-0 overflow-hidden">
         <img
           src="/wallpaper.jpg"
           alt="Wallpaper"
-          className="w-full h-full object-cover object-center scale-105 filter brightness-[0.4] contrast-[1.05]"
+          className="w-full h-full object-cover object-center scale-102 filter brightness-[0.38] contrast-[1.08] saturate-[0.95]"
         />
-        {/* Subtle accent color ambient glow */}
+        
+        {/* Subtle accent color ambient glow lights */}
         <div
-          className="absolute inset-0 opacity-[0.25] mix-blend-screen"
+          className="absolute inset-0 opacity-[0.28] mix-blend-screen pointer-events-none"
           style={{
             background: `radial-gradient(ellipse at 50% 50%, ${user?.accentColor}18 0%, transparent 80%)`,
           }}
         />
-        {/* Sleek grid mesh overlay */}
+        
+        {/* Delicate grain noise filter overlay */}
         <div 
-          className="absolute inset-0 opacity-[0.02]"
+          className="absolute inset-0 opacity-[0.015] pointer-events-none"
           style={{
             backgroundImage: `
-              linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px),
-              linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)
+              linear-gradient(rgba(255,255,255,0.06) 1px, transparent 1px),
+              linear-gradient(90deg, rgba(255,255,255,0.06) 1px, transparent 1px)
             `,
-            backgroundSize: '50px 50px',
+            backgroundSize: '40px 40px',
           }}
         />
       </div>
@@ -71,7 +73,7 @@ export default function Desktop() {
           <div className={`
             ${isMobile
               ? 'grid grid-cols-4 gap-4 px-2 justify-items-center'
-              : 'flex flex-col gap-3'
+              : 'flex flex-col gap-4'
             }
           `}>
             {SYSTEM_APPS.map((app, i) => {
@@ -80,34 +82,38 @@ export default function Desktop() {
               return (
                 <motion.button
                   key={app.id}
-                  initial={{ opacity: 0, y: 12 }}
+                  initial={{ opacity: 0, y: 14 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.1 + i * 0.05, type: 'spring', stiffness: 300, damping: 25 }}
+                  transition={{ delay: 0.12 + i * 0.05, type: 'spring', stiffness: 280, damping: 22 }}
                   onClick={() => openWindow(app)}
                   className={`
                     group flex items-center rounded-2xl
                     transition-all duration-200 border border-transparent
                     focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20
                     ${isMobile
-                      ? 'flex-col gap-2 p-3 w-20 h-22 hover:bg-white/[0.06] active:scale-90 hover:border-white/5 active:bg-white/[0.1] active:border-white/10'
-                      : 'gap-3 p-3 hover:bg-white/[0.04] w-28 hover:border-white/5 hover:shadow-md'
+                      ? 'flex-col gap-2 p-3 w-20 h-22 hover:bg-white/[0.05] active:scale-90 hover:border-white/5 active:bg-white/[0.08] active:border-white/10'
+                      : 'gap-3.5 p-3 hover:bg-white/[0.03] w-28 hover:border-white/5 hover:shadow-lg active:scale-95'
                     }
                   `}
                 >
-                  {/* Icon with optimized touch hit area (minimum 44px on mobile) */}
+                  {/* Icon with optimized touch hit area (minimum 44px on mobile) and inner tactile shadow */}
                   <div
                     className={`
-                      icon-container shrink-0 shadow-lg flex items-center justify-center
-                      ${isMobile ? 'w-13 h-13 rounded-2xl' : 'w-11 h-11 rounded-xl'}
+                      icon-container shrink-0 flex items-center justify-center shadow-2xl relative overflow-hidden
+                      ${isMobile ? 'w-13 h-13 rounded-2xl' : 'w-11.5 h-11.5 rounded-xl'}
                     `}
                     style={{
-                      background: `linear-gradient(135deg, ${user?.accentColor}12, ${user?.accentColor}06)`,
+                      background: `linear-gradient(135deg, ${user?.accentColor}15, ${user?.accentColor}04)`,
                       borderColor: `${user?.accentColor}25`,
+                      boxShadow: `inset 0 1px 0 rgba(255,255,255,0.04), 0 8px 24px rgba(0,0,0,0.5)`,
                     }}
                   >
+                    {/* Glass glare effect inside icon */}
+                    <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/[0.015] to-white/[0.05] pointer-events-none" />
+
                     {IconComponent && (
                       <IconComponent
-                        className={`${isMobile ? 'w-6 h-6' : 'w-5 h-5'} transition-colors group-hover:scale-105 duration-200`}
+                        className={`${isMobile ? 'w-6.5 h-6.5' : 'w-5.5 h-5.5'} transition-all duration-300 group-hover:scale-108`}
                         style={{ color: user?.accentColor }}
                         strokeWidth={1.5}
                       />
@@ -117,7 +123,7 @@ export default function Desktop() {
                   {/* Label */}
                   <span className={`
                     text-[var(--text-secondary)] group-hover:text-[var(--text-primary)]
-                    transition-colors font-medium text-center truncate w-full
+                    transition-colors font-semibold text-center truncate w-full tracking-wide
                     ${isMobile ? 'text-[11px] leading-tight px-1' : 'text-xs text-left'}
                   `}>
                     {app.title}
@@ -137,4 +143,3 @@ export default function Desktop() {
     </motion.div>
   );
 }
-

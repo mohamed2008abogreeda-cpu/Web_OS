@@ -1,6 +1,6 @@
 'use client';
 // ============================================================
-// LoginScreen — User selection with neumorphic card design
+// LoginScreen — User selection with premium tactile card design
 // ============================================================
 import { motion } from 'framer-motion';
 import { useOSStore } from '@/store/useOSStore';
@@ -15,17 +15,17 @@ const containerVariants = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
-    transition: { staggerChildren: 0.15, delayChildren: 0.1 },
+    transition: { staggerChildren: 0.18, delayChildren: 0.1 },
   },
 };
 
 const cardVariants = {
-  hidden: { opacity: 0, y: 30, scale: 0.93 },
+  hidden: { opacity: 0, y: 36, scale: 0.94 },
   visible: { 
     opacity: 1, 
     y: 0, 
     scale: 1,
-    transition: { type: 'spring' as const, stiffness: 260, damping: 25 }
+    transition: { type: 'spring' as const, stiffness: 220, damping: 22 }
   },
 };
 
@@ -34,57 +34,70 @@ export default function LoginScreen() {
 
   const handleLogin = (name: UserName) => {
     loginUser(name);
-    toast.success(`Welcome back, ${name}! Booting your workspace...`, {
-      description: USERS[name].role,
-      duration: 3500,
+    toast.success(`Welcome back, ${name}!`, {
+      description: `Launching workspace context for ${USERS[name].role}...`,
+      duration: 4000,
     });
   };
 
   return (
     <motion.div
-      className="fixed inset-0 z-[9998] bg-[var(--bg-base)] flex flex-col items-center justify-center px-6 select-none"
+      className="fixed inset-0 z-[9998] bg-[var(--bg-base)] flex flex-col items-center justify-center px-6 select-none overflow-hidden"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      transition={{ duration: 0.6 }}
+      transition={{ duration: 0.7 }}
       data-testid="login-screen"
     >
-      {/* Background wallpaper subtle underlay */}
+      {/* Background wallpaper cinematic blur */}
       <div className="absolute inset-0 select-none pointer-events-none z-0">
         <img
           src="/wallpaper.jpg"
           alt="Wallpaper background"
-          className="w-full h-full object-cover object-center scale-105 filter brightness-[0.25] blur-[8px]"
+          className="w-full h-full object-cover object-center scale-105 filter brightness-[0.22] blur-[12px] contrast-[1.05]"
         />
-        <div className="absolute inset-0 bg-black/60" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[var(--bg-base)] via-black/40 to-transparent" />
       </div>
 
-      {/* Ambient background glow */}
+      {/* Cyberpunk grid overlay */}
+      <div className="absolute inset-0 opacity-[0.015] z-10 pointer-events-none"
+        style={{
+          backgroundImage: `
+            linear-gradient(rgba(255,255,255,0.08) 1.5px, transparent 1.5px),
+            linear-gradient(90deg, rgba(255,255,255,0.08) 1.5px, transparent 1.5px)
+          `,
+          backgroundSize: '40px 40px',
+        }}
+      />
+
+      {/* Ambient glowing spotlight spotlights */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none z-10">
-        <div className="absolute top-1/4 left-1/4 w-[450px] h-[450px] rounded-full opacity-[0.05] filter blur-[80px]"
-          style={{ background: 'radial-gradient(circle, #6366f1, transparent 70%)' }}
+        <div className="absolute top-[-10%] left-[20%] w-[600px] h-[600px] rounded-full opacity-[0.06] filter blur-[100px]"
+          style={{ background: 'radial-gradient(circle, #4f46e5, transparent 75%)' }}
         />
-        <div className="absolute bottom-1/4 right-1/4 w-[450px] h-[450px] rounded-full opacity-[0.04] filter blur-[80px]"
-          style={{ background: 'radial-gradient(circle, #06b6d4, transparent 70%)' }}
+        <div className="absolute bottom-[-10%] right-[20%] w-[600px] h-[600px] rounded-full opacity-[0.04] filter blur-[100px]"
+          style={{ background: 'radial-gradient(circle, #0891b2, transparent 75%)' }}
         />
       </div>
 
       {/* Header */}
       <motion.div
-        className="text-center mb-14 relative z-20"
-        initial={{ opacity: 0, y: -20 }}
+        className="text-center mb-16 relative z-20"
+        initial={{ opacity: 0, y: -24 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ type: 'spring', stiffness: 200, damping: 25 }}
+        transition={{ type: 'spring', stiffness: 180, damping: 24 }}
       >
-        <h1 className="text-[var(--text-primary)] text-3xl sm:text-4xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-zinc-100 via-zinc-300 to-zinc-400">
+        <h1 className="text-[var(--text-primary)] text-3xl sm:text-5xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-b from-white via-zinc-200 to-zinc-400">
           Web OS Portfolio
         </h1>
-        <p className="text-[var(--text-secondary)] text-sm sm:text-base mt-3 opacity-80 font-medium">Select a profile context to launch the OS</p>
+        <p className="text-[var(--text-secondary)] text-sm sm:text-base mt-3.5 opacity-80 font-semibold tracking-wide uppercase text-zinc-400">
+          Select developer profile to bootstrap workspace
+        </p>
       </motion.div>
 
-      {/* User Cards (Tactile & neumorphic visual hierarchy with touch targets optimized) */}
+      {/* User Profiles Grid */}
       <motion.div
-        className="flex flex-col sm:flex-row gap-5 sm:gap-6 relative z-20 w-full max-w-md sm:max-w-none sm:w-auto"
+        className="flex flex-col sm:flex-row gap-6 sm:gap-7 relative z-20 w-full max-w-md sm:max-w-none sm:w-auto"
         variants={containerVariants}
         initial="hidden"
         animate="visible"
@@ -97,71 +110,89 @@ export default function LoginScreen() {
             <motion.button
               key={name}
               variants={cardVariants}
-              whileHover={{ y: -6, scale: 1.03 }}
-              whileTap={{ scale: 0.97 }}
+              whileHover={{ y: -8, scale: 1.03 }}
+              whileTap={{ scale: 0.96 }}
               onClick={() => handleLogin(name)}
               className="group relative flex sm:flex-col items-center gap-4 sm:gap-0
-                         sm:w-52 p-6 sm:p-7 sm:pt-9
-                         rounded-3xl border border-[var(--border-subtle)]
-                         bg-[var(--bg-elevated)]/80 backdrop-blur-2xl
-                         hover:border-[var(--border-default)]
+                         sm:w-56 p-6 sm:p-8 sm:pt-10
+                         rounded-[32px] border border-white/[0.04]
+                         bg-[#0b0f19]/70 backdrop-blur-3xl shadow-2xl
+                         hover:border-white/[0.08]
                          transition-all duration-350
-                         focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/50"
+                         focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/50 overflow-hidden"
               data-testid={`login-${name.toLowerCase()}`}
               onMouseEnter={(e) => {
-                (e.currentTarget as HTMLElement).style.boxShadow = `0 16px 40px ${user.accentColor}12, 0 0 0 1.5px ${user.accentColor}25`;
+                (e.currentTarget as HTMLElement).style.boxShadow = `0 24px 48px ${user.accentColor}18, inset 0 1px 0 rgba(255,255,255,0.08)`;
+                (e.currentTarget as HTMLElement).style.borderColor = `${user.accentColor}40`;
               }}
               onMouseLeave={(e) => {
                 (e.currentTarget as HTMLElement).style.boxShadow = 'none';
+                (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.04)';
               }}
             >
-              {/* Icon container */}
-              <div
-                className="w-16 h-16 sm:w-18 sm:h-18 rounded-2xl flex items-center justify-center
-                           shrink-0 sm:mb-5 transition-all duration-300
-                           group-hover:scale-105 group-hover:rotate-2 shadow-lg"
-                style={{
-                  background: `linear-gradient(135deg, ${user.accentColor}18, ${user.accentColor}08)`,
-                  border: `1.5px solid ${user.accentColor}25`,
-                }}
-              >
-                <IconComponent
-                  className="w-8 h-8 sm:w-9 sm:h-9 transition-colors duration-300"
-                  style={{ color: user.accentColor }}
-                  strokeWidth={1.5}
+              {/* Glossy sweep light effect */}
+              <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/[0.04] to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-out pointer-events-none" />
+
+              {/* Spinning Glow Halo Avatar Frame */}
+              <div className="relative shrink-0 sm:mb-6">
+                {/* Neon Ring Halo */}
+                <div
+                  className="absolute inset-[-4px] rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 animate-neon-spin"
+                  style={{
+                    padding: '2px',
+                    background: `linear-gradient(135deg, ${user.accentColor}, transparent 80%)`,
+                  }}
                 />
+                
+                <div
+                  className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl flex items-center justify-center
+                             relative z-10 transition-all duration-300 shadow-md group-hover:scale-105"
+                  style={{
+                    background: `linear-gradient(135deg, ${user.accentColor}18, ${user.accentColor}06)`,
+                    border: `1.5px solid ${user.accentColor}25`,
+                  }}
+                >
+                  <IconComponent
+                    className="w-8 h-8 sm:w-10 sm:h-10 transition-colors duration-300 group-hover:rotate-6"
+                    style={{ color: user.accentColor }}
+                    strokeWidth={1.5}
+                  />
+                </div>
               </div>
 
-              {/* Info */}
+              {/* Profile Details */}
               <div className="text-left sm:text-center flex-1 sm:flex-initial min-w-0">
                 <h3 className="text-[var(--text-primary)] text-base sm:text-lg font-bold tracking-tight">
                   {user.name}
                 </h3>
-                <p className="text-[var(--text-secondary)] text-[11px] sm:text-xs mt-1.5 leading-snug line-clamp-2 sm:line-clamp-none opacity-80">
+                <p className="text-[var(--text-secondary)] text-[11px] sm:text-xs mt-2 leading-relaxed opacity-75 font-medium">
                   {user.role}
                 </p>
               </div>
 
-              {/* Status dot */}
-              <div className="flex items-center gap-1.5 sm:mt-5 shrink-0">
+              {/* Tactile active status bubble */}
+              <div className="flex items-center gap-2 sm:mt-6 shrink-0 bg-emerald-500/5 px-2.5 py-1 rounded-full border border-emerald-500/10">
                 <div className="status-dot status-dot-online" />
-                <span className="text-[10px] text-emerald-400/80 font-bold uppercase tracking-wider">Online</span>
+                <span className="text-[9px] text-emerald-400 font-bold uppercase tracking-widest">Active</span>
               </div>
             </motion.button>
           );
         })}
       </motion.div>
 
-      {/* Footer */}
+      {/* Footer System Specs */}
       <motion.p
-        className="text-[var(--text-muted)] text-[11px] mt-12 font-mono relative z-20 tracking-wider"
+        className="text-[var(--text-muted)] text-[10px] sm:text-xs mt-16 font-mono relative z-20 tracking-widest opacity-60 flex items-center gap-1.5"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ delay: 0.8 }}
+        transition={{ delay: 0.9 }}
       >
-        v2.0.0 — NEXT.JS 16 + TAILWIND V4 + EDGE ENGINE
+        <span>WEBOS CORE v3.0.0</span>
+        <span className="w-1 h-1 rounded-full bg-zinc-700" />
+        <span>NEXTJS 16</span>
+        <span className="w-1 h-1 rounded-full bg-zinc-700" />
+        <span>TAILWIND V4</span>
       </motion.p>
     </motion.div>
   );
 }
-

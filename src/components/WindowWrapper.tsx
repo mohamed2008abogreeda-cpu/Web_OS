@@ -1,10 +1,10 @@
 'use client';
 // ============================================================
-// WindowWrapper — Draggable/Resizable window with Lucide icons
+// WindowWrapper — Draggable/Resizable window with premium glassmorphism
 // ============================================================
 import { useRef, useCallback } from 'react';
 import { Rnd } from 'react-rnd';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { useOSStore } from '@/store/useOSStore';
 import { USERS } from '@/lib/mockData';
 import { APP_ICONS, Minus, Maximize2, X } from '@/lib/icons';
@@ -44,22 +44,22 @@ export default function WindowWrapper({ window: win, children }: WindowWrapperPr
       <motion.div
         className="fixed inset-0 z-50 flex flex-col bg-[var(--bg-base)]"
         style={{ zIndex: win.zIndex }}
-        initial={{ opacity: 0, scale: 0.94, y: 30 }}
+        initial={{ opacity: 0, scale: 0.94, y: 36 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.94, y: 30 }}
+        exit={{ opacity: 0, scale: 0.94, y: 36 }}
         transition={{ type: 'spring', stiffness: 260, damping: 26 }}
         onClick={handleFocus}
       >
         {/* Title bar (Touch optimized: height 14 to fit 44px min hit targets) */}
         <div
           className="h-14 flex items-center px-4 gap-3 shrink-0
-                     bg-[var(--bg-elevated)] border-b border-[var(--border-subtle)]"
+                     bg-[#090d16] border-b border-white/[0.06] select-none"
           style={{
-            boxShadow: isActive ? `0 1px 0 ${user?.accentColor}15` : undefined,
+            boxShadow: isActive ? `0 1.5px 0 ${user?.accentColor}18` : undefined,
           }}
         >
           {/* Icon + Title */}
-          <div className="flex items-center gap-3 flex-1 min-w-0 h-full">
+          <div className="flex items-center gap-3.5 flex-1 min-w-0 h-full">
             {AppIcon && (
               <AppIcon
                 className="w-5 h-5 shrink-0"
@@ -67,41 +67,41 @@ export default function WindowWrapper({ window: win, children }: WindowWrapperPr
                 strokeWidth={1.5}
               />
             )}
-            <span className="text-[var(--text-secondary)] text-sm font-semibold truncate">
+            <span className="text-[var(--text-secondary)] text-sm font-bold truncate">
               {win.title}
             </span>
           </div>
 
           {/* Controls with large hit areas (at least 44x44px for Samsung Internet/Android users) */}
-          <div className="flex items-center gap-1.5 h-full">
+          <div className="flex items-center gap-2 h-full">
             <button
               onClick={() => minimizeWindow(win.id)}
               className="w-11 h-11 rounded-xl flex items-center justify-center
                          text-[var(--text-muted)] hover:bg-white/[0.06] hover:text-[var(--text-secondary)]
-                         active:bg-white/[0.1] active:scale-95 transition-all duration-150"
+                         active:bg-white/[0.1] active:scale-90 transition-all duration-150"
               title="Minimize"
             >
-              <Minus className="w-4 h-4" strokeWidth={2.2} />
+              <Minus className="w-4.5 h-4.5" strokeWidth={2.2} />
             </button>
             {win.isMaximized && !isMobile && (
               <button
                 onClick={() => restoreWindow(win.id)}
                 className="w-11 h-11 rounded-xl flex items-center justify-center
                            text-[var(--text-muted)] hover:bg-white/[0.06] hover:text-[var(--text-secondary)]
-                           active:bg-white/[0.1] active:scale-95 transition-all duration-150"
+                           active:bg-white/[0.1] active:scale-90 transition-all duration-150"
                 title="Restore"
               >
-                <Maximize2 className="w-4 h-4" strokeWidth={2.2} />
+                <Maximize2 className="w-4.5 h-4.5" strokeWidth={2.2} />
               </button>
             )}
             <button
               onClick={() => closeWindow(win.id)}
               className="w-11 h-11 rounded-xl flex items-center justify-center
-                         text-[var(--text-muted)] hover:bg-rose-500/15 hover:text-rose-400
-                         active:bg-rose-500/25 active:scale-95 transition-all duration-150"
+                         text-[var(--text-muted)] hover:bg-rose-500/10 hover:text-rose-400
+                         active:bg-rose-500/20 active:scale-90 transition-all duration-150"
               title="Close"
             >
-              <X className="w-4 h-4" strokeWidth={2.2} />
+              <X className="w-4.5 h-4.5" strokeWidth={2.2} />
             </button>
           </div>
         </div>
@@ -138,26 +138,27 @@ export default function WindowWrapper({ window: win, children }: WindowWrapperPr
     >
       <motion.div
         className={`
-          flex flex-col w-full h-full rounded-2xl overflow-hidden
-          border backdrop-blur-2xl transition-all duration-200
+          flex flex-col w-full h-full rounded-[20px] overflow-hidden
+          border transition-all duration-350 select-none
           ${isActive
-            ? 'border-[var(--border-default)] shadow-2xl shadow-black/60 bg-[var(--bg-elevated)]/90'
-            : 'border-[var(--border-subtle)] shadow-lg shadow-black/40 bg-[var(--bg-elevated)]/75 opacity-[0.93]'
+            ? 'border-white/[0.08] bg-[#090d16]/90 shadow-[0_24px_72px_rgba(0,0,0,0.85)]'
+            : 'border-white/[0.05] bg-[#090d16]/75 shadow-[0_12px_36px_rgba(0,0,0,0.6)] opacity-[0.93]'
           }
         `}
-        initial={{ opacity: 0, scale: 0.94, y: 15 }}
+        initial={{ opacity: 0, scale: 0.94, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.94, y: 15 }}
+        exit={{ opacity: 0, scale: 0.94, y: 20 }}
         transition={{ type: 'spring', stiffness: 240, damping: 25 }}
         style={{
           boxShadow: isActive
-            ? `0 24px 64px rgba(0,0,0,0.65), 0 0 0 1px ${user?.accentColor}18`
-            : undefined,
+            ? `inset 0 1px 0 rgba(255,255,255,0.06), 0 24px 64px rgba(0,0,0,0.7), 0 0 0 1.5px ${user?.accentColor}18`
+            : `inset 0 1px 0 rgba(255,255,255,0.03), 0 12px 32px rgba(0,0,0,0.5)`,
         }}
       >
         {/* Title bar */}
         <div className="window-drag-handle h-12 flex items-center px-4 gap-4 shrink-0
-                        bg-[var(--bg-elevated)] border-b border-[var(--border-subtle)] select-none">
+                        bg-[#090d16] border-b border-white/[0.05] select-none">
+          
           {/* macOS-style traffic lights with premium micro-interactions */}
           <div className="flex items-center gap-2 h-full">
             <button
@@ -195,7 +196,7 @@ export default function WindowWrapper({ window: win, children }: WindowWrapperPr
                 strokeWidth={1.5}
               />
             )}
-            <span className="text-[var(--text-secondary)] text-xs font-semibold truncate select-none">
+            <span className="text-[var(--text-secondary)] text-xs font-bold truncate select-none">
               {win.title}
             </span>
           </div>
@@ -209,4 +210,3 @@ export default function WindowWrapper({ window: win, children }: WindowWrapperPr
     </Rnd>
   );
 }
-

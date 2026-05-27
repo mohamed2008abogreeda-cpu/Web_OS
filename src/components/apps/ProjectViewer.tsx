@@ -67,12 +67,21 @@ function LiveStatusWidget({ endpoint }: { endpoint: string }) {
 }
 
 function ProjectCard({ project, onSelect, accentColor }: { project: Project; onSelect: (p: Project) => void; accentColor: string }) {
+  const [isHovered, setIsHovered] = useState(false);
   const ProjIcon = PROJECT_ICONS[project.id];
 
   return (
     <button
       onClick={() => onSelect(project)}
-      className="w-full flex items-center gap-3.5 p-3.5 card-surface text-left group border border-[var(--border-subtle)] bg-[var(--bg-elevated)]/40 hover:bg-[var(--bg-card-hover)] rounded-2xl transition-all duration-200 active:scale-[0.98]"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      className="w-full flex items-center gap-3.5 p-3.5 card-surface text-left group border bg-[var(--bg-elevated)]/40 hover:bg-[var(--bg-card-hover)] rounded-2xl transition-all duration-250 active:scale-[0.98] select-none"
+      style={{
+        borderColor: isHovered ? `${accentColor}35` : 'var(--border-subtle)',
+        boxShadow: isHovered 
+          ? `0 12px 28px ${accentColor}0f, inset 0 1px 0 rgba(255, 255, 255, 0.05)` 
+          : 'inset 0 1px 0 rgba(255, 255, 255, 0.03)',
+      }}
     >
       <div
         className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0
@@ -99,9 +108,9 @@ function ProjectCard({ project, onSelect, accentColor }: { project: Project; onS
         </div>
       </div>
       {project.liveApiEndpoint ? (
-        <div className="status-dot status-dot-online shrink-0" />
+        <div className="status-dot status-dot-online shrink-0 animate-pulse" />
       ) : (
-        <div className="w-2 h-2 rounded-full bg-zinc-600 shrink-0" />
+        <div className="w-2 h-2 rounded-full bg-zinc-700 shrink-0" />
       )}
     </button>
   );

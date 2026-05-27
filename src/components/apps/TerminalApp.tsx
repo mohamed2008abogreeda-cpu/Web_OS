@@ -235,23 +235,44 @@ export default function TerminalApp({ windowId }: { windowId: string }) {
 
   return (
     <div
-      className="flex flex-col h-full bg-[#0c0c0c] font-mono text-sm select-none"
+      className="flex flex-col h-full bg-[#04060b] font-mono text-sm select-none relative overflow-hidden"
       onClick={() => inputRef.current?.focus()}
       data-testid="terminal-app"
+      style={{
+        boxShadow: 'inset 0 0 60px rgba(74, 222, 128, 0.05)',
+      }}
     >
+      {/* CRT Scanline Overlay */}
+      <div 
+        className="pointer-events-none absolute inset-0 z-20 opacity-[0.025]"
+        style={{
+          backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 2px, #4ade80 2px, #4ade80 4px)',
+        }}
+      />
+
+      {/* CRT Screen Glow Glare */}
+      <div className="pointer-events-none absolute inset-0 z-20 bg-gradient-to-tr from-transparent via-white/[0.008] to-white/[0.02]" />
+
       {/* Terminal output */}
-      <ScrollArea ref={scrollRef} className="flex-1">
-        <div className="p-4 flex flex-col gap-1">
+      <ScrollArea ref={scrollRef} className="flex-1 relative z-10">
+        <div className="p-5 flex flex-col gap-1.5">
           {lines.map((line, i) => (
             <div
               key={i}
-              className={`whitespace-pre-wrap leading-relaxed ${
+              className={`whitespace-pre-wrap leading-relaxed transition-all duration-150 ${
                 line.type === 'input' ? 'text-green-400 font-bold' :
-                line.type === 'error' ? 'text-red-400 font-bold' :
+                line.type === 'error' ? 'text-rose-400 font-bold' :
                 line.type === 'success' ? 'text-emerald-400 font-bold' :
                 line.type === 'system' ? 'text-cyan-400 font-bold' :
-                'text-gray-300'
+                'text-slate-300'
               }`}
+              style={{
+                textShadow: line.type === 'input' || line.type === 'success'
+                  ? '0 0 6px rgba(74, 222, 128, 0.22)'
+                  : line.type === 'system'
+                  ? '0 0 6px rgba(34, 211, 238, 0.22)'
+                  : undefined,
+              }}
             >
               {line.content || '\u00A0'}
             </div>
@@ -260,8 +281,11 @@ export default function TerminalApp({ windowId }: { windowId: string }) {
       </ScrollArea>
 
       {/* Input line */}
-      <div className="flex items-center px-4 py-3.5 border-t border-white/[0.06] bg-black/55 shrink-0">
-        <span className="text-green-400 shrink-0 mr-2.5 font-bold">
+      <div className="flex items-center px-5 py-4 border-t border-white/[0.05] bg-black/40 backdrop-blur-md shrink-0 relative z-10">
+        <span 
+          className="text-green-400 shrink-0 mr-3 font-bold"
+          style={{ textShadow: '0 0 4px rgba(74, 222, 128, 0.3)' }}
+        >
           {awaitingPassword ? '🔒 password:' : `${currentUser?.toLowerCase()}@webos:~$`}
         </span>
         <input
@@ -271,11 +295,14 @@ export default function TerminalApp({ windowId }: { windowId: string }) {
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
           className="flex-1 bg-transparent text-gray-100 outline-none caret-green-400
-                     placeholder:text-gray-800 font-mono text-sm"
-          placeholder={awaitingPassword ? '••••••••' : 'Type a command...'}
+                     placeholder:text-emerald-950/60 font-mono text-sm"
+          placeholder={awaitingPassword ? '••••••••' : 'Type a command (try "neofetch")...'}
           autoComplete="off"
           spellCheck={false}
           data-testid="terminal-input"
+          style={{
+            textShadow: '0 0 4px rgba(248, 250, 252, 0.2)',
+          }}
         />
       </div>
     </div>

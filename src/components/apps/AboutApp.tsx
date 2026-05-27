@@ -2,6 +2,7 @@
 // ============================================================
 // AboutApp — User profile with Lucide icons
 // ============================================================
+import { useState } from 'react';
 import { useOSStore } from '@/store/useOSStore';
 import { USERS } from '@/lib/mockData';
 import { USER_ICONS, Globe, Zap, Activity, Monitor, Code2, Palette } from '@/lib/icons';
@@ -84,8 +85,19 @@ export default function AboutApp({ windowId }: { windowId: string }) {
 }
 
 function StatCard({ icon, label, value, accent }: { icon: React.ReactNode; label: string; value: string; accent: string }) {
+  const [isHovered, setIsHovered] = useState(false);
   return (
-    <div className="card-surface p-4 flex items-start gap-3 border border-[var(--border-subtle)] bg-[var(--bg-elevated)]/30 rounded-2xl">
+    <div
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      className="card-surface p-4 flex items-start gap-3 border bg-[var(--bg-elevated)]/30 rounded-2xl transition-all duration-200 select-none"
+      style={{
+        borderColor: isHovered ? `${accent}30` : 'var(--border-subtle)',
+        boxShadow: isHovered 
+          ? `0 8px 24px ${accent}0b, inset 0 1px 0 rgba(255, 255, 255, 0.04)` 
+          : 'inset 0 1px 0 rgba(255, 255, 255, 0.02)',
+      }}
+    >
       <div
         className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
         style={{

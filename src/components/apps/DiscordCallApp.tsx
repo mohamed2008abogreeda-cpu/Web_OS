@@ -12,6 +12,32 @@ import { toast } from 'sonner';
 
 type CallState = 'idle' | 'requesting' | 'ringing' | 'connected' | 'ended' | 'error';
 
+function AudioWaveVisualizer() {
+  return (
+    <div className="flex items-center gap-1 h-9 mt-4 justify-center select-none" data-testid="audio-wave">
+      {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((bar) => {
+        const delay = bar * 0.08;
+        return (
+          <motion.div
+            key={bar}
+            className="w-1 rounded-full bg-emerald-400/90 shadow-[0_0_8px_rgba(16,185,129,0.4)]"
+            animate={{
+              height: [6, 26, 4, 18, 6],
+            }}
+            transition={{
+              duration: 0.8 + (bar % 3) * 0.15,
+              repeat: Infinity,
+              ease: 'easeInOut',
+              delay: delay,
+            }}
+            style={{ minHeight: '4px' }}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
 export default function DiscordCallApp({ windowId }: { windowId: string }) {
   const currentUser = useOSStore((s) => s.currentUser);
   const user = currentUser ? USERS[currentUser] : null;
@@ -169,14 +195,18 @@ export default function DiscordCallApp({ windowId }: { windowId: string }) {
           {callState === 'ended' && 'Call Ended'}
           {callState === 'error' && 'Connection Failed'}
         </h3>
+        <p className="text-[var(--text-secondary)] text-xs font-semibold tracking-wider text-emerald-400 font-mono mb-2">
+          {callState === 'connected' && formatDuration(duration)}
+        </p>
         <p className="text-[var(--text-secondary)] text-xs font-medium opacity-80 leading-relaxed">
           {callState === 'idle' && 'Initiate a secure voice call via Discord bridge'}
           {callState === 'requesting' && 'Please authorize microphone permissions in the browser'}
           {callState === 'ringing' && 'Connecting WebRTC audio bridge to Discord server...'}
-          {callState === 'connected' && formatDuration(duration)}
+          {callState === 'connected' && 'VoIP session active. Streaming audio.'}
           {callState === 'ended' && 'Session successfully terminated'}
           {callState === 'error' && errorMsg}
         </p>
+        {callState === 'connected' && <AudioWaveVisualizer />}
       </div>
 
       {/* Controls (Hit-areas perfectly optimized with Framer motion transitions) */}
