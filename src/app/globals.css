@@ -1,0 +1,167 @@
+@import "tailwindcss";
+
+/* ============================================================
+   Web OS Portfolio — Global Styles
+   Samsung Internet / Chrome Android compatible
+   ============================================================ */
+
+/* ── Reset & Base ──────────────────────────────────────── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  /* Prevent Samsung Internet from adding tap highlights */
+  -webkit-tap-highlight-color: transparent;
+}
+
+html, body {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  background: #000;
+  color: #fff;
+  font-family: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  /* Samsung Internet: prevent text size adjustment */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  /* Prevent overscroll bounce on iOS/Samsung */
+  overscroll-behavior: none;
+}
+
+/* ── Scrollbar ─────────────────────────────────────────── */
+.scrollbar-hide {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Thin scrollbar for areas that need it */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.08) transparent;
+}
+.scrollbar-thin::-webkit-scrollbar {
+  width: 4px;
+}
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+}
+
+/* ── Animations ────────────────────────────────────────── */
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
+.animate-blink {
+  animation: blink 1s steps(1) infinite;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.5s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slideUp {
+  animation: slideUp 0.3s ease-out;
+}
+
+/* Pulse animation (Samsung-safe, no complex transforms) */
+@keyframes pulse-glow {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* ── Samsung Internet Fixes ────────────────────────────── */
+
+/* Samsung Internet doesn't handle backdrop-filter well in some cases */
+@supports not (backdrop-filter: blur(1px)) {
+  .backdrop-blur-xl,
+  .backdrop-blur-2xl,
+  .backdrop-blur-sm {
+    background-color: rgba(0, 0, 0, 0.92) !important;
+  }
+}
+
+/* Samsung Internet flexbox gap fallback */
+@supports not (gap: 1px) {
+  .flex > * + * {
+    margin-left: 0.25rem;
+  }
+}
+
+/* ── Selection ─────────────────────────────────────────── */
+::selection {
+  background: rgba(99, 102, 241, 0.3);
+  color: white;
+}
+
+::-moz-selection {
+  background: rgba(99, 102, 241, 0.3);
+  color: white;
+}
+
+/* ── Focus ring ────────────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid rgba(99, 102, 241, 0.5);
+  outline-offset: 2px;
+}
+
+/* ── Safe area for mobile (notch/nav bar) ──────────────── */
+@supports (padding: env(safe-area-inset-bottom)) {
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* ── Window drag handle cursor ─────────────────────────── */
+.window-drag-handle {
+  cursor: grab;
+}
+.window-drag-handle:active {
+  cursor: grabbing;
+}
+
+/* ── Code/Terminal font ────────────────────────────────── */
+.font-mono {
+  font-family: var(--font-geist-mono), 'Cascadia Code', 'Fira Code', 'JetBrains Mono', monospace;
+}
+
+/* ── Prose overrides for markdown rendering ─────────────── */
+.prose-invert h2 {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  padding-bottom: 0.5rem;
+}
+
+/* ── React-rnd overrides ───────────────────────────────── */
+.react-draggable {
+  /* Prevent Samsung Internet from interfering with drag events */
+  touch-action: none;
+}
