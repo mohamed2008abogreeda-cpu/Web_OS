@@ -7,6 +7,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useOSStore } from '@/store/useOSStore';
 import { USERS } from '@/lib/mockData';
 import { Phone, PhoneOff, PhoneCall, Mic, MicOff, AlertCircle, Wifi, Info } from '@/lib/icons';
+import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
 
 type CallState = 'idle' | 'requesting' | 'ringing' | 'connected' | 'ended' | 'error';
 
@@ -37,11 +39,13 @@ export default function DiscordCallApp({ windowId }: { windowId: string }) {
   const startCall = useCallback(async () => {
     setCallState('requesting');
     setErrorMsg('');
+    const toastId = toast.loading('Initializing call system...');
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
       setCallState('ringing');
+      toast.loading('Pinging Discord server bridge...', { id: toastId });
 
       try {
         await fetch('/api/discord-call', {
@@ -57,6 +61,7 @@ export default function DiscordCallApp({ windowId }: { windowId: string }) {
       setTimeout(() => {
         setCallState('connected');
         setDuration(0);
+        toast.success('VoIP Bridge Connected!', { id: toastId });
         timerRef.current = setInterval(() => {
           setDuration((prev) => prev + 1);
         }, 1000);
@@ -64,6 +69,10 @@ export default function DiscordCallApp({ windowId }: { windowId: string }) {
     } catch {
       setCallState('error');
       setErrorMsg('Microphone access denied. Please allow mic permissions.');
+      toast.error('Connection Failed', {
+        id: toastId,
+        description: 'Microphone access denied.',
+      });
     }
   }, [currentUser]);
 
@@ -73,14 +82,21 @@ export default function DiscordCallApp({ windowId }: { windowId: string }) {
     if (timerRef.current) clearInterval(timerRef.current);
     setCallState('ended');
     setDuration(0);
+    toast.info('Call terminated');
   }, []);
 
   const toggleMute = useCallback(() => {
     if (streamRef.current) {
+      const nextMute = !isMuted;
       streamRef.current.getAudioTracks().forEach((t) => {
-        t.enabled = !t.enabled;
+        t.enabled = !nextMute;
       });
-      setIsMuted(!isMuted);
+      setIsMuted(nextMute);
+      if (nextMute) {
+        toast.warning('Microphone muted');
+      } else {
+        toast.success('Microphone unmuted');
+      }
     }
   }, [isMuted]);
 
@@ -98,7 +114,7 @@ export default function DiscordCallApp({ windowId }: { windowId: string }) {
   const StateIcon = config.icon;
 
   return (
-    <div className="flex flex-col h-full bg-[var(--bg-base)] items-center justify-center p-6"
+    <div className="flex flex-col h-full bg-[var(--bg-base)] items-center justify-center p-6 select-none"
       data-testid="discord-call-app">
 
       {/* Accent ring */}
@@ -126,12 +142,12 @@ export default function DiscordCallApp({ windowId }: { windowId: string }) {
 
         <div
           className="w-24 h-24 rounded-full flex items-center justify-center
-                     border-2 transition-all duration-500"
+                     border-2 transition-all duration-500 shadow-inner"
           style={{
             borderColor: config.border,
             background: config.bg,
             boxShadow: callState === 'connected'
-              ? '0 8px 32px rgba(16,185,129,0.15)'
+              ? '0 12px 40px rgba(16,185,129,0.2)'
               : undefined,
           }}
         >
@@ -144,8 +160,8 @@ export default function DiscordCallApp({ windowId }: { windowId: string }) {
       </div>
 
       {/* Status text */}
-      <div className="text-center mb-8">
-        <h3 className="text-[var(--text-primary)] text-lg font-semibold mb-1">
+      <div className="text-center mb-8 max-w-xs">
+        <h3 className="text-[var(--text-primary)] text-lg font-bold tracking-tight mb-1">
           {callState === 'idle' && 'Call the Team'}
           {callState === 'requesting' && 'Requesting Microphone...'}
           {callState === 'ringing' && 'Ringing...'}
@@ -153,69 +169,65 @@ export default function DiscordCallApp({ windowId }: { windowId: string }) {
           {callState === 'ended' && 'Call Ended'}
           {callState === 'error' && 'Connection Failed'}
         </h3>
-        <p className="text-[var(--text-muted)] text-sm">
-          {callState === 'idle' && 'Initiate a voice call via Discord bridge'}
-          {callState === 'requesting' && 'Please allow microphone access'}
-          {callState === 'ringing' && 'Pinging Discord server...'}
+        <p className="text-[var(--text-secondary)] text-xs font-medium opacity-80 leading-relaxed">
+          {callState === 'idle' && 'Initiate a secure voice call via Discord bridge'}
+          {callState === 'requesting' && 'Please authorize microphone permissions in the browser'}
+          {callState === 'ringing' && 'Connecting WebRTC audio bridge to Discord server...'}
           {callState === 'connected' && formatDuration(duration)}
-          {callState === 'ended' && 'Session terminated'}
+          {callState === 'ended' && 'Session successfully terminated'}
           {callState === 'error' && errorMsg}
         </p>
       </div>
 
-      {/* Controls */}
-      <div className="flex items-center gap-4">
+      {/* Controls (Hit-areas perfectly optimized with Framer motion transitions) */}
+      <div className="flex items-center gap-5 h-16">
         {callState === 'idle' || callState === 'ended' || callState === 'error' ? (
-          <motion.button
+          <Button
             onClick={startCall}
             className="w-16 h-16 rounded-full bg-emerald-500 hover:bg-emerald-400
-                     flex items-center justify-center transition-colors
-                     shadow-lg shadow-emerald-500/30"
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
+                     flex items-center justify-center transition-colors hover:shadow-[0_8px_24px_rgba(16,185,129,0.4)]
+                     shadow-lg shadow-emerald-500/30 shrink-0 p-0"
           >
-            <Phone className="w-7 h-7 text-white" strokeWidth={2} />
-          </motion.button>
+            <Phone className="w-6 h-6 text-white" strokeWidth={2.2} />
+          </Button>
         ) : (
           <>
-            <motion.button
+            <Button
               onClick={toggleMute}
-              className={`w-12 h-12 rounded-full flex items-center justify-center transition-colors ${
+              variant="neumorphic"
+              className={`w-13 h-13 rounded-full flex items-center justify-center p-0 transition-colors ${
                 isMuted
-                  ? 'bg-amber-500/20 border border-amber-500/30 text-amber-400'
-                  : 'bg-[var(--bg-card)] border border-[var(--border-default)] text-[var(--text-tertiary)]'
+                  ? 'bg-amber-500/15 border border-amber-500/30 text-amber-400 hover:bg-amber-500/25 hover:text-amber-300'
+                  : 'bg-[var(--bg-elevated)] border border-[var(--border-default)] text-[var(--text-secondary)]'
               }`}
-              whileTap={{ scale: 0.9 }}
             >
               {isMuted ? (
-                <MicOff className="w-5 h-5" strokeWidth={1.5} />
+                <MicOff className="w-5 h-5" strokeWidth={1.8} />
               ) : (
-                <Mic className="w-5 h-5" strokeWidth={1.5} />
+                <Mic className="w-5 h-5" strokeWidth={1.8} />
               )}
-            </motion.button>
+            </Button>
 
-            <motion.button
+            <Button
               onClick={endCall}
-              className="w-16 h-16 rounded-full bg-red-500 hover:bg-red-400
-                       flex items-center justify-center transition-colors
-                       shadow-lg shadow-red-500/30"
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
+              className="w-16 h-16 rounded-full bg-rose-600 hover:bg-rose-500
+                       flex items-center justify-center transition-colors hover:shadow-[0_8px_24px_rgba(239,68,68,0.4)]
+                       shadow-lg shadow-rose-600/30 shrink-0 p-0"
             >
-              <PhoneOff className="w-7 h-7 text-white" strokeWidth={2} />
-            </motion.button>
+              <PhoneOff className="w-6 h-6 text-white" strokeWidth={2.2} />
+            </Button>
           </>
         )}
       </div>
 
       {/* Info footer */}
-      <div className="mt-8 px-4 py-3 card-surface max-w-xs flex items-start gap-2.5">
-        <Info className="w-4 h-4 text-[var(--text-muted)] shrink-0 mt-0.5" strokeWidth={1.5} />
+      <div className="mt-9 px-4 py-3.5 card-surface max-w-xs flex items-start gap-3 border border-[var(--border-subtle)] bg-[var(--bg-elevated)]/30 rounded-2xl">
+        <Info className="w-4.5 h-4.5 text-[var(--text-muted)] shrink-0 mt-0.5" strokeWidth={1.6} />
         <p className="text-[var(--text-muted)] text-[11px] leading-relaxed">
-          Uses WebRTC for voice and a Next.js API route to bridge to Discord.
-          The team will receive a ping in their Discord server.
+          Uses browser WebRTC for high-fidelity audio streams linked directly to our private team Discord server.
         </p>
       </div>
     </div>
   );
 }
+

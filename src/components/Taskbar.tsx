@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useOSStore } from '@/store/useOSStore';
 import { SYSTEM_APPS, USERS } from '@/lib/mockData';
 import { APP_ICONS, USER_ICONS, Grid3x3, ArrowLeftRight, LogOut } from '@/lib/icons';
+import { toast } from 'sonner';
 
 function Clock() {
   const [time, setTime] = useState('');
@@ -24,9 +25,9 @@ function Clock() {
   }, []);
 
   return (
-    <div className="text-right text-[11px] leading-tight">
-      <div className="text-[var(--text-secondary)] font-medium">{time}</div>
-      <div className="text-[var(--text-muted)]">{date}</div>
+    <div className="text-right text-[11px] leading-tight select-none px-2 py-1">
+      <div className="text-[var(--text-primary)] font-semibold tracking-wide">{time}</div>
+      <div className="text-[var(--text-muted)] text-[10px] mt-0.5">{date}</div>
     </div>
   );
 }
@@ -64,19 +65,19 @@ export default function Taskbar() {
               onClick={() => toggleStartMenu()}
             />
 
-            {/* Menu Panel */}
+            {/* Menu Panel - Styled as a premium neumorphic glass card */}
             <motion.div
-              className="fixed bottom-16 left-3 z-[8001] w-72
-                         card-elevated overflow-hidden"
-              initial={{ opacity: 0, y: 20, scale: 0.95 }}
+              className="fixed bottom-16 left-3 z-[8001] w-80
+                         card-elevated overflow-hidden border border-[var(--border-default)] shadow-2xl backdrop-blur-3xl bg-[var(--bg-elevated)]/90"
+              initial={{ opacity: 0, y: 24, scale: 0.94 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 20, scale: 0.95 }}
-              transition={{ duration: 0.2, ease: 'easeOut' }}
+              exit={{ opacity: 0, y: 24, scale: 0.94 }}
+              transition={{ type: 'spring', stiffness: 380, damping: 30 }}
             >
               {/* User header */}
-              <div className="p-4 border-b border-[var(--border-subtle)] flex items-center gap-3">
+              <div className="p-4 sm:p-5 border-b border-[var(--border-subtle)] flex items-center gap-3">
                 <div
-                  className="w-9 h-9 rounded-xl flex items-center justify-center"
+                  className="w-11 h-11 rounded-2xl flex items-center justify-center shadow-inner shrink-0"
                   style={{
                     background: `linear-gradient(135deg, ${user?.accentColor}20, ${user?.accentColor}08)`,
                     border: `1px solid ${user?.accentColor}25`,
@@ -84,20 +85,20 @@ export default function Taskbar() {
                 >
                   {UserIcon && (
                     <UserIcon
-                      className="w-4.5 h-4.5"
+                      className="w-5 h-5"
                       style={{ color: user?.accentColor }}
                       strokeWidth={1.5}
                     />
                   )}
                 </div>
-                <div>
-                  <div className="text-[var(--text-primary)] text-sm font-medium">{currentUser}</div>
-                  <div className="text-[var(--text-muted)] text-[10px]">{user?.role}</div>
+                <div className="min-w-0">
+                  <div className="text-[var(--text-primary)] text-sm font-semibold truncate">{currentUser}</div>
+                  <div className="text-[var(--text-muted)] text-[11px] truncate mt-0.5">{user?.role}</div>
                 </div>
               </div>
 
-              {/* Apps */}
-              <div className="p-2">
+              {/* Apps (Height-optimized for better touch-areas on Samsung Internet) */}
+              <div className="p-2.5 flex flex-col gap-1">
                 {SYSTEM_APPS.map((app) => {
                   const AppIcon = APP_ICONS[app.id];
                   return (
@@ -106,13 +107,18 @@ export default function Taskbar() {
                       onClick={() => {
                         openWindow(app);
                         toggleStartMenu();
+                        toast.success(`Opening ${app.title}`);
                       }}
-                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl
+                      className="w-full flex items-center gap-3.5 px-3.5 py-3 rounded-xl
                                  text-[var(--text-secondary)] hover:bg-[var(--bg-card-hover)] hover:text-[var(--text-primary)]
-                                 transition-colors text-sm"
+                                 active:bg-white/[0.08] active:scale-98 transition-all duration-150 text-left text-sm font-medium"
                     >
                       {AppIcon && (
-                        <AppIcon className="w-4 h-4 text-[var(--text-tertiary)]" strokeWidth={1.5} />
+                        <div
+                          className="w-8 h-8 rounded-lg flex items-center justify-center bg-white/[0.03] border border-white/[0.04]"
+                        >
+                          <AppIcon className="w-4.5 h-4.5 text-[var(--text-secondary)]" strokeWidth={1.6} />
+                        </div>
                       )}
                       <span>{app.title}</span>
                     </button>
@@ -121,24 +127,37 @@ export default function Taskbar() {
               </div>
 
               {/* Footer actions */}
-              <div className="p-2 border-t border-[var(--border-subtle)]">
+              <div className="p-2.5 border-t border-[var(--border-subtle)] flex flex-col gap-1">
                 <button
-                  onClick={() => { switchUser(); toggleStartMenu(); }}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl
-                             text-[var(--text-tertiary)] hover:bg-[var(--bg-card-hover)] hover:text-[var(--text-primary)]
-                             transition-colors text-sm"
+                  onClick={() => {
+                    const prevUser = currentUser;
+                    switchUser();
+                    toggleStartMenu();
+                    toast.info(`Switched user context from ${prevUser}`);
+                  }}
+                  className="w-full flex items-center gap-3.5 px-3.5 py-3 rounded-xl
+                             text-[var(--text-secondary)] hover:bg-[var(--bg-card-hover)] hover:text-[var(--text-primary)]
+                             active:bg-white/[0.08] active:scale-98 transition-all duration-150 text-left text-sm font-medium"
                 >
-                  <ArrowLeftRight className="w-4 h-4" strokeWidth={1.5} />
-                  Switch User
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-white/[0.03] border border-white/[0.04]">
+                    <ArrowLeftRight className="w-4.5 h-4.5 text-[var(--text-tertiary)]" strokeWidth={1.6} />
+                  </div>
+                  <span>Switch Profile</span>
                 </button>
                 <button
-                  onClick={() => { logoutUser(); toggleStartMenu(); }}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl
-                             text-[var(--text-tertiary)] hover:bg-rose-500/10 hover:text-rose-400
-                             transition-colors text-sm"
+                  onClick={() => {
+                    logoutUser();
+                    toggleStartMenu();
+                    toast.success('Logged out successfully');
+                  }}
+                  className="w-full flex items-center gap-3.5 px-3.5 py-3 rounded-xl
+                             text-[var(--text-secondary)] hover:bg-rose-500/10 hover:text-rose-400
+                             active:bg-rose-500/20 active:scale-98 transition-all duration-150 text-left text-sm font-medium"
                 >
-                  <LogOut className="w-4 h-4" strokeWidth={1.5} />
-                  Sign Out
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-rose-500/5 border border-rose-500/10">
+                    <LogOut className="w-4.5 h-4.5" strokeWidth={1.6} />
+                  </div>
+                  <span>Sign Out</span>
                 </button>
               </div>
             </motion.div>
@@ -149,81 +168,95 @@ export default function Taskbar() {
       {/* ─── Taskbar ─────────────────────────────── */}
       <div
         className="fixed bottom-0 left-0 right-0 z-[7999] h-14
-                   bg-[var(--bg-base)]/80 backdrop-blur-2xl border-t border-[var(--border-subtle)]
-                   flex items-center px-3 gap-1"
+                   bg-[var(--bg-base)]/75 backdrop-blur-2xl border-t border-[var(--border-subtle)]
+                   flex items-center px-4 justify-between"
         data-testid="taskbar"
       >
-        {/* Start Button */}
-        <button
-          onClick={toggleStartMenu}
-          className={`
-            flex items-center justify-center w-10 h-10 rounded-xl
-            transition-all duration-200
-            ${isStartMenuOpen
-              ? 'bg-white/[0.1] text-[var(--text-primary)]'
-              : 'hover:bg-white/[0.06] text-[var(--text-tertiary)] hover:text-[var(--text-primary)]'
-            }
-          `}
-          data-testid="start-button"
-        >
-          <Grid3x3 className="w-5 h-5" strokeWidth={1.5} />
-        </button>
+        <div className="flex items-center gap-1.5 h-full">
+          {/* Start Button */}
+          <button
+            onClick={toggleStartMenu}
+            className={`
+              flex items-center justify-center w-11 h-11 rounded-xl
+              transition-all duration-150 active:scale-90
+              ${isStartMenuOpen
+                ? 'bg-white/[0.1] text-[var(--text-primary)] border border-white/10'
+                : 'hover:bg-white/[0.06] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-transparent'
+              }
+            `}
+            data-testid="start-button"
+          >
+            <Grid3x3 className="w-5.5 h-5.5" strokeWidth={1.6} />
+          </button>
 
-        {/* Separator */}
-        <div className="w-px h-6 bg-[var(--border-subtle)] mx-1" />
+          {/* Separator */}
+          <div className="w-px h-6 bg-[var(--border-subtle)] mx-1" />
 
-        {/* Running Windows */}
-        <div className="flex-1 flex items-center gap-1 overflow-x-auto scrollbar-hide">
-          {windows.map((win) => {
-            const WinIcon = APP_ICONS[win.appId];
-            return (
-              <button
-                key={win.id}
-                onClick={() => {
-                  if (win.isMinimized) {
-                    restoreWindow(win.id);
-                  } else if (activeWindowId === win.id) {
-                    minimizeWindow(win.id);
-                  } else {
-                    focusWindow(win.id);
-                  }
-                }}
-                className={`
-                  flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium
-                  transition-all duration-200 shrink-0
-                  ${activeWindowId === win.id && !win.isMinimized
-                    ? 'bg-white/[0.1] text-[var(--text-primary)] border-b-2'
-                    : 'text-[var(--text-muted)] hover:bg-white/[0.04] hover:text-[var(--text-secondary)]'
-                  }
-                `}
-                style={{
-                  borderBottomColor: activeWindowId === win.id && !win.isMinimized
-                    ? user?.accentColor
-                    : 'transparent',
-                }}
-              >
-                {WinIcon && <WinIcon className="w-3.5 h-3.5" strokeWidth={1.5} />}
-                <span className="max-w-20 truncate">{win.title}</span>
-              </button>
-            );
-          })}
+          {/* Running Windows */}
+          <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide h-full py-1">
+            {windows.map((win) => {
+              const WinIcon = APP_ICONS[win.appId];
+              const isWinActive = activeWindowId === win.id && !win.isMinimized;
+
+              return (
+                <button
+                  key={win.id}
+                  onClick={() => {
+                    if (win.isMinimized) {
+                      restoreWindow(win.id);
+                    } else if (activeWindowId === win.id) {
+                      minimizeWindow(win.id);
+                    } else {
+                      focusWindow(win.id);
+                    }
+                  }}
+                  className={`
+                    flex items-center gap-2.5 px-3.5 h-11 rounded-xl text-xs font-semibold
+                    transition-all duration-150 shrink-0 relative active:scale-95 border
+                    ${isWinActive
+                      ? 'bg-white/[0.08] text-[var(--text-primary)] border-white/10'
+                      : 'text-[var(--text-muted)] hover:bg-white/[0.04] hover:text-[var(--text-secondary)] border-transparent'
+                    }
+                  `}
+                >
+                  {WinIcon && <WinIcon className="w-4 h-4" strokeWidth={1.6} style={{ color: isWinActive ? user?.accentColor : undefined }} />}
+                  <span className="max-w-24 truncate">{win.title}</span>
+
+                  {/* Tiny active bottom indicator */}
+                  <div
+                    className={`absolute bottom-1 left-[30%] right-[30%] h-0.75 rounded-full transition-all duration-200
+                      ${isWinActive ? 'opacity-100 scale-100' : 'opacity-0 scale-50'}`}
+                    style={{ backgroundColor: user?.accentColor }}
+                  />
+                </button>
+              );
+            })}
+          </div>
         </div>
 
-        {/* Right side: Switch User + Clock */}
-        <div className="flex items-center gap-3">
+        {/* Right side: Switch Profile Quick Button + Clock */}
+        <div className="flex items-center gap-2">
           <button
-            onClick={switchUser}
-            className="flex items-center gap-2 px-2 py-1.5 rounded-lg
+            onClick={() => {
+              const prevUser = currentUser;
+              switchUser();
+              toast.info(`Switched user context from ${prevUser}`);
+            }}
+            className="flex items-center justify-center w-11 h-11 rounded-xl
                        text-[var(--text-muted)] hover:bg-white/[0.06] hover:text-[var(--text-secondary)]
-                       transition-colors text-xs"
+                       active:scale-90 transition-all duration-150"
             data-testid="switch-user"
-            title="Switch User"
+            title="Switch User Profile"
           >
-            <ArrowLeftRight className="w-4 h-4" strokeWidth={1.5} />
+            <ArrowLeftRight className="w-5.5 h-5.5" strokeWidth={1.6} />
           </button>
+          
+          <div className="w-px h-6 bg-[var(--border-subtle)] mx-1" />
+          
           <Clock />
         </div>
       </div>
     </>
   );
 }
+

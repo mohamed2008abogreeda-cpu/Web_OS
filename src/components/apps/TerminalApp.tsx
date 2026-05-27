@@ -6,6 +6,8 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { useOSStore } from '@/store/useOSStore';
 import { USERS, ADMIN_PASSWORD, getProjectsForUser } from '@/lib/mockData';
 import type { AppDefinition } from '@/types';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { toast } from 'sonner';
 
 interface TermLine {
   type: 'input' | 'output' | 'error' | 'success' | 'system';
@@ -24,7 +26,7 @@ const CONTROL_PANEL_APP: AppDefinition = {
 export default function TerminalApp({ windowId }: { windowId: string }) {
   const [lines, setLines] = useState<TermLine[]>([
     { type: 'system', content: '╔══════════════════════════════════════════════╗' },
-    { type: 'system', content: '║  WebOS Terminal v1.0.0                       ║' },
+    { type: 'system', content: '║  WebOS Terminal v2.0.0                       ║' },
     { type: 'system', content: '║  Type "help" for available commands          ║' },
     { type: 'system', content: '╚══════════════════════════════════════════════╝' },
     { type: 'output', content: '' },
@@ -54,7 +56,10 @@ export default function TerminalApp({ windowId }: { windowId: string }) {
   // Auto-scroll
   useEffect(() => {
     if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      const scrollContainer = scrollRef.current.querySelector('[data-radix-scroll-area-viewport]');
+      if (scrollContainer) {
+        scrollContainer.scrollTop = scrollContainer.scrollHeight;
+      }
     }
   }, [lines]);
 
@@ -75,9 +80,9 @@ export default function TerminalApp({ windowId }: { windowId: string }) {
       { type: 'output', content: '' },
       { type: 'output', content: `  User:     ${currentUser}` },
       { type: 'output', content: `  Role:     ${user?.role}` },
-      { type: 'output', content: `  OS:       WebOS Portfolio v1.0.0` },
-      { type: 'output', content: `  Shell:    webos-term 1.0` },
-      { type: 'output', content: `  Runtime:  Next.js 15 + React 19` },
+      { type: 'output', content: `  OS:       WebOS Portfolio v2.0.0` },
+      { type: 'output', content: `  Shell:    webos-term 2.0` },
+      { type: 'output', content: `  Runtime:  Next.js 16 + React 19` },
       { type: 'output', content: `  State:    Zustand 5.x` },
       { type: 'output', content: `  Accent:   ${accent}` },
       { type: 'output', content: `  Backend:  Cloudflare D1 + R2` },
@@ -93,10 +98,16 @@ export default function TerminalApp({ windowId }: { windowId: string }) {
       setAwaitingPassword(false);
       if (cmd.trim() === ADMIN_PASSWORD) {
         addLine('success', '✓ Authentication successful. Opening Control Panel...');
+        toast.success('Admin authentication verified!', {
+          description: 'Access granted to Control Panel.',
+        });
         setAdminAuthenticated(true);
         setTimeout(() => openWindow(CONTROL_PANEL_APP), 500);
       } else {
         addLine('error', '✗ Authentication failed. Access denied.');
+        toast.error('Authentication Failed', {
+          description: 'Incorrect admin password.',
+        });
       }
       return;
     }
@@ -172,7 +183,7 @@ export default function TerminalApp({ windowId }: { windowId: string }) {
         break;
 
       case trimmed === 'uname -a':
-        addLine('output', '  WebOS 1.0.0 x86_64 Next.js/15 React/19 Cloudflare-Edge');
+        addLine('output', '  WebOS 2.0.0 x86_64 Next.js/16 React/19 Cloudflare-Edge');
         break;
 
       case trimmed === 'uptime':
@@ -224,31 +235,33 @@ export default function TerminalApp({ windowId }: { windowId: string }) {
 
   return (
     <div
-      className="flex flex-col h-full bg-[#0c0c0c] font-mono text-sm"
+      className="flex flex-col h-full bg-[#0c0c0c] font-mono text-sm select-none"
       onClick={() => inputRef.current?.focus()}
       data-testid="terminal-app"
     >
       {/* Terminal output */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-0.5 scrollbar-hide">
-        {lines.map((line, i) => (
-          <div
-            key={i}
-            className={`whitespace-pre-wrap leading-relaxed ${
-              line.type === 'input' ? 'text-green-400' :
-              line.type === 'error' ? 'text-red-400' :
-              line.type === 'success' ? 'text-emerald-400' :
-              line.type === 'system' ? 'text-cyan-400' :
-              'text-gray-400'
-            }`}
-          >
-            {line.content || '\u00A0'}
-          </div>
-        ))}
-      </div>
+      <ScrollArea ref={scrollRef} className="flex-1">
+        <div className="p-4 flex flex-col gap-1">
+          {lines.map((line, i) => (
+            <div
+              key={i}
+              className={`whitespace-pre-wrap leading-relaxed ${
+                line.type === 'input' ? 'text-green-400 font-bold' :
+                line.type === 'error' ? 'text-red-400 font-bold' :
+                line.type === 'success' ? 'text-emerald-400 font-bold' :
+                line.type === 'system' ? 'text-cyan-400 font-bold' :
+                'text-gray-300'
+              }`}
+            >
+              {line.content || '\u00A0'}
+            </div>
+          ))}
+        </div>
+      </ScrollArea>
 
       {/* Input line */}
-      <div className="flex items-center px-4 py-3 border-t border-white/[0.06] bg-black/40">
-        <span className="text-green-400 shrink-0 mr-2">
+      <div className="flex items-center px-4 py-3.5 border-t border-white/[0.06] bg-black/55 shrink-0">
+        <span className="text-green-400 shrink-0 mr-2.5 font-bold">
           {awaitingPassword ? '🔒 password:' : `${currentUser?.toLowerCase()}@webos:~$`}
         </span>
         <input
@@ -257,8 +270,8 @@ export default function TerminalApp({ windowId }: { windowId: string }) {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
-          className="flex-1 bg-transparent text-gray-200 outline-none caret-green-400
-                     placeholder:text-gray-700 font-mono text-sm"
+          className="flex-1 bg-transparent text-gray-100 outline-none caret-green-400
+                     placeholder:text-gray-800 font-mono text-sm"
           placeholder={awaitingPassword ? '••••••••' : 'Type a command...'}
           autoComplete="off"
           spellCheck={false}
@@ -268,3 +281,4 @@ export default function TerminalApp({ windowId }: { windowId: string }) {
     </div>
   );
 }
+

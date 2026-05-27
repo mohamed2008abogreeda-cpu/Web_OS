@@ -7,6 +7,8 @@ import { useOSStore } from '@/store/useOSStore';
 import { USERS, getProjectsForUser } from '@/lib/mockData';
 import { PROJECT_ICONS, ChevronLeft, ExternalLink, Activity, CheckCircle2, FolderOpen } from '@/lib/icons';
 import type { Project, LiveStats } from '@/types';
+import { Button } from '@/components/ui/button';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 function LiveStatusWidget({ endpoint }: { endpoint: string }) {
   const [stats, setStats] = useState<LiveStats | null>(null);
@@ -36,9 +38,9 @@ function LiveStatusWidget({ endpoint }: { endpoint: string }) {
 
   if (loading) {
     return (
-      <div className="flex items-center gap-2 px-3 py-2 card-surface">
+      <div className="flex items-center gap-2 px-3 py-2 card-surface border border-[var(--border-subtle)] bg-[var(--bg-elevated)]/20 rounded-xl">
         <div className="w-2 h-2 rounded-full bg-[var(--text-muted)] animate-pulse" />
-        <span className="text-[var(--text-muted)] text-xs">Checking status...</span>
+        <span className="text-[var(--text-muted)] text-xs font-semibold">Checking system status...</span>
       </div>
     );
   }
@@ -49,17 +51,17 @@ function LiveStatusWidget({ endpoint }: { endpoint: string }) {
     <div className="flex items-center gap-4 px-4 py-2.5 rounded-xl bg-emerald-500/[0.06] border border-emerald-500/[0.15]">
       <div className="flex items-center gap-2">
         <div className="status-dot status-dot-online" />
-        <span className="text-emerald-300 text-xs font-semibold uppercase tracking-wider">
+        <span className="text-emerald-300 text-xs font-bold uppercase tracking-wider">
           {stats.status}
         </span>
       </div>
       <div className="h-3 w-px bg-emerald-500/20" />
-      <div className="flex items-center gap-1 text-[var(--text-tertiary)] text-[11px]">
-        <Activity className="w-3 h-3" strokeWidth={1.5} />
+      <div className="flex items-center gap-1.5 text-[var(--text-secondary)] text-[11px] font-semibold">
+        <Activity className="w-3.5 h-3.5 text-emerald-400" strokeWidth={1.8} />
         Uptime: {stats.uptime}
       </div>
-      <span className="text-[var(--text-tertiary)] text-[11px]">Ping: {stats.ping}ms</span>
-      <span className="text-[var(--text-muted)] text-[10px] ml-auto">{stats.lastChecked}</span>
+      <span className="text-[var(--text-secondary)] text-[11px] font-semibold">Ping: {stats.ping}ms</span>
+      <span className="text-[var(--text-muted)] text-[10px] ml-auto font-mono">{stats.lastChecked}</span>
     </div>
   );
 }
@@ -70,34 +72,36 @@ function ProjectCard({ project, onSelect, accentColor }: { project: Project; onS
   return (
     <button
       onClick={() => onSelect(project)}
-      className="w-full flex items-center gap-3 p-3 card-surface text-left group"
+      className="w-full flex items-center gap-3.5 p-3.5 card-surface text-left group border border-[var(--border-subtle)] bg-[var(--bg-elevated)]/40 hover:bg-[var(--bg-card-hover)] rounded-2xl transition-all duration-200 active:scale-[0.98]"
     >
       <div
-        className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0
-                   group-hover:scale-105 transition-transform"
+        className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0
+                   group-hover:scale-105 transition-transform shadow-md"
         style={{
-          background: `linear-gradient(135deg, ${accentColor}12, ${accentColor}05)`,
-          border: `1px solid ${accentColor}18`,
+          background: `linear-gradient(135deg, ${accentColor}18, ${accentColor}05)`,
+          border: `1.5px solid ${accentColor}25`,
         }}
       >
         {ProjIcon ? (
-          <ProjIcon className="w-4.5 h-4.5" style={{ color: accentColor }} strokeWidth={1.5} />
+          <ProjIcon className="w-5 h-5" style={{ color: accentColor }} strokeWidth={1.5} />
         ) : (
-          <FolderOpen className="w-4.5 h-4.5" style={{ color: accentColor }} strokeWidth={1.5} />
+          <FolderOpen className="w-5 h-5" style={{ color: accentColor }} strokeWidth={1.5} />
         )}
       </div>
       <div className="flex-1 min-w-0">
-        <h3 className="text-[var(--text-primary)] text-sm font-medium truncate">{project.title}</h3>
-        <div className="flex gap-1.5 mt-1 flex-wrap">
+        <h3 className="text-[var(--text-primary)] text-sm sm:text-base font-bold truncate tracking-tight">{project.title}</h3>
+        <div className="flex gap-1.5 mt-1.5 flex-wrap">
           {project.tags.slice(0, 3).map((tag) => (
-            <span key={tag} className="text-[9px] px-1.5 py-0.5 rounded-md bg-[var(--bg-card)] border border-[var(--border-subtle)] text-[var(--text-muted)]">
+            <span key={tag} className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-[var(--bg-card)] border border-[var(--border-subtle)] text-[var(--text-secondary)]">
               {tag}
             </span>
           ))}
         </div>
       </div>
-      {project.liveApiEndpoint && (
+      {project.liveApiEndpoint ? (
         <div className="status-dot status-dot-online shrink-0" />
+      ) : (
+        <div className="w-2 h-2 rounded-full bg-zinc-600 shrink-0" />
       )}
     </button>
   );
@@ -108,49 +112,56 @@ function ProjectDetail({ project, onBack, accentColor }: { project: Project; onB
   const ProjIcon = PROJECT_ICONS[project.id];
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full bg-[var(--bg-base)]">
       {/* Header */}
-      <div className="shrink-0 p-4 border-b border-[var(--border-subtle)]">
-        <div className="flex items-center gap-3 mb-3">
-          <button
+      <div className="shrink-0 p-4 border-b border-[var(--border-subtle)] flex flex-col gap-3">
+        <div className="flex items-center gap-3.5 min-w-0">
+          <Button
+            variant="neumorphic"
+            size="icon"
             onClick={onBack}
-            className="p-1.5 rounded-lg hover:bg-[var(--bg-card-hover)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors"
+            className="rounded-xl w-10 h-10 p-0"
           >
-            <ChevronLeft className="w-4 h-4" strokeWidth={2} />
-          </button>
+            <ChevronLeft className="w-5 h-5" strokeWidth={2.2} />
+          </Button>
           <div
-            className="w-10 h-10 rounded-xl flex items-center justify-center"
+            className="w-11 h-11 rounded-2xl flex items-center justify-center shadow-lg shrink-0"
             style={{
-              background: `linear-gradient(135deg, ${accentColor}15, ${accentColor}05)`,
-              border: `1px solid ${accentColor}20`,
+              background: `linear-gradient(135deg, ${accentColor}20, ${accentColor}06)`,
+              border: `1.5px solid ${accentColor}25`,
             }}
           >
             {ProjIcon ? (
-              <ProjIcon className="w-5 h-5" style={{ color: accentColor }} strokeWidth={1.5} />
+              <ProjIcon className="w-5.5 h-5.5" style={{ color: accentColor }} strokeWidth={1.5} />
             ) : (
-              <FolderOpen className="w-5 h-5" style={{ color: accentColor }} strokeWidth={1.5} />
+              <FolderOpen className="w-5.5 h-5.5" style={{ color: accentColor }} strokeWidth={1.5} />
             )}
           </div>
-          <div>
-            <h2 className="text-[var(--text-primary)] text-lg font-semibold">{project.title}</h2>
-            <div className="flex gap-1.5 mt-0.5">
+          <div className="min-w-0 flex-1">
+            <h2 className="text-[var(--text-primary)] text-base sm:text-lg font-bold tracking-tight truncate">{project.title}</h2>
+            <div className="flex gap-1.5 mt-1 overflow-x-auto scrollbar-hide">
               {project.tags.map((tag) => (
-                <span key={tag} className="text-[9px] px-1.5 py-0.5 rounded-md bg-[var(--bg-card)] border border-[var(--border-subtle)] text-[var(--text-muted)]">
+                <span key={tag} className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-[var(--bg-card)] border border-[var(--border-subtle)] text-[var(--text-secondary)] whitespace-nowrap">
                   {tag}
                 </span>
               ))}
             </div>
           </div>
-          <div className="ml-auto flex gap-2">
-            <a
-              href={project.projectUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="btn-ghost text-xs"
+          <div className="shrink-0">
+            <Button
+              variant="default"
+              asChild
+              className="h-10 px-4 text-xs font-semibold rounded-xl"
             >
-              <ExternalLink className="w-3.5 h-3.5" strokeWidth={1.5} />
-              Open
-            </a>
+              <a
+                href={project.projectUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <ExternalLink className="w-3.5 h-3.5" strokeWidth={1.8} />
+                Open Live
+              </a>
+            </Button>
           </div>
         </div>
         {project.liveApiEndpoint && (
@@ -159,62 +170,63 @@ function ProjectDetail({ project, onBack, accentColor }: { project: Project; onB
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-auto">
+      <ScrollArea className="flex-1">
         {project.hasIframe && !iframeError ? (
-          <div className="relative w-full h-full">
+          <div className="relative w-full h-full min-h-[400px]">
             <iframe
               src={project.projectUrl}
               sandbox="allow-scripts allow-same-origin allow-popups"
-              className="w-full h-full border-0"
+              className="w-full h-full border-0 min-h-[400px]"
               onError={() => setIframeError(true)}
               title={project.title}
             />
-            <div className="absolute bottom-3 right-3">
-              <a
-                href={project.projectUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="btn-ghost text-xs"
-              >
-                <ExternalLink className="w-3 h-3" strokeWidth={1.5} />
-                New tab
-              </a>
+            <div className="absolute bottom-4 right-4">
+              <Button variant="neumorphic" asChild className="shadow-lg backdrop-blur-md bg-[var(--bg-elevated)]/85">
+                <a
+                  href={project.projectUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <ExternalLink className="w-4 h-4" strokeWidth={1.8} />
+                  New Tab
+                </a>
+              </Button>
             </div>
           </div>
         ) : (
-          <div className="p-6">
+          <div className="p-6 max-w-2xl mx-auto flex flex-col gap-5">
             {project.description.split('\n').map((line, i) => {
               if (line.startsWith('## ')) {
-                return <h2 key={i} className="text-xl font-bold text-[var(--text-primary)] mt-6 mb-3">{line.slice(3)}</h2>;
+                return <h2 key={i} className="text-xl font-extrabold text-[var(--text-primary)] tracking-tight mt-6 mb-1">{line.slice(3)}</h2>;
               }
               if (line.startsWith('### ')) {
-                return <h3 key={i} className="text-base font-semibold text-[var(--text-secondary)] mt-4 mb-2">{line.slice(4)}</h3>;
+                return <h3 key={i} className="text-base font-bold text-[var(--text-secondary)] mt-4 mb-1">{line.slice(4)}</h3>;
               }
               if (line.startsWith('- **')) {
                 const match = line.match(/- \*\*(.+?)\*\*:?\s*(.*)/);
                 if (match) {
                   return (
-                    <div key={i} className="flex gap-2 py-0.5 text-[var(--text-tertiary)] text-sm">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500/50 shrink-0 mt-0.5" strokeWidth={1.5} />
-                      <span><strong className="text-[var(--text-secondary)]">{match[1]}:</strong> {match[2]}</span>
+                    <div key={i} className="flex gap-3 py-1 text-[var(--text-secondary)] text-sm">
+                      <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" strokeWidth={1.8} />
+                      <span><strong className="text-[var(--text-primary)] font-bold">{match[1]}:</strong> {match[2]}</span>
                     </div>
                   );
                 }
               }
               if (line.startsWith('- ')) {
                 return (
-                  <div key={i} className="flex gap-2 py-0.5 text-[var(--text-tertiary)] text-sm">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500/50 shrink-0 mt-0.5" strokeWidth={1.5} />
+                  <div key={i} className="flex gap-3 py-1 text-[var(--text-secondary)] text-sm">
+                    <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" strokeWidth={1.8} />
                     <span>{line.slice(2)}</span>
                   </div>
                 );
               }
-              if (line.trim() === '') return <div key={i} className="h-2" />;
-              return <p key={i} className="text-[var(--text-tertiary)] text-sm leading-relaxed">{line}</p>;
+              if (line.trim() === '') return <div key={i} className="h-1.5" />;
+              return <p key={i} className="text-[var(--text-secondary)] text-sm leading-relaxed opacity-95">{line}</p>;
             })}
           </div>
         )}
-      </div>
+      </ScrollArea>
     </div>
   );
 }
@@ -232,16 +244,19 @@ export default function ProjectViewer({ windowId }: { windowId: string }) {
   return (
     <div className="flex flex-col h-full bg-[var(--bg-base)]" data-testid="project-viewer">
       <div className="shrink-0 p-4 border-b border-[var(--border-subtle)]">
-        <h2 className="text-[var(--text-primary)] text-base font-semibold">
+        <h2 className="text-[var(--text-primary)] text-base font-bold tracking-tight">
           {currentUser === 'Team' ? 'All Projects' : `${currentUser}'s Projects`}
         </h2>
-        <p className="text-[var(--text-muted)] text-xs mt-0.5">{projects.length} projects</p>
+        <p className="text-[var(--text-muted)] text-[11px] font-semibold mt-0.5 uppercase tracking-wide">{projects.length} projects</p>
       </div>
-      <div className="flex-1 overflow-y-auto p-3 space-y-2 scrollbar-hide">
-        {projects.map((project) => (
-          <ProjectCard key={project.id} project={project} onSelect={setSelectedProject} accentColor={user?.accentColor || '#6366f1'} />
-        ))}
-      </div>
+      <ScrollArea className="flex-1">
+        <div className="flex flex-col p-4 gap-3">
+          {projects.map((project) => (
+            <ProjectCard key={project.id} project={project} onSelect={setSelectedProject} accentColor={user?.accentColor || '#6366f1'} />
+          ))}
+        </div>
+      </ScrollArea>
     </div>
   );
 }
+

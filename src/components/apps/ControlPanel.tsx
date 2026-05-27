@@ -6,6 +6,9 @@ import { useState } from 'react';
 import { useOSStore } from '@/store/useOSStore';
 import { PROJECTS } from '@/lib/mockData';
 import type { Project } from '@/types';
+import { Button } from '@/components/ui/button';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { toast } from 'sonner';
 
 type Tab = 'list' | 'add' | 'edit';
 
@@ -37,14 +40,14 @@ function ProjectForm({
     });
   };
 
-  const inputClass = `w-full px-3 py-2 rounded-lg bg-white/[0.04] border border-white/[0.08]
-                      text-gray-200 text-sm outline-none focus:border-white/[0.2]
-                      placeholder:text-gray-600 transition-colors`;
+  const inputClass = `w-full px-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.08]
+                      text-gray-200 text-sm outline-none focus:border-indigo-500/50 focus:ring-2 focus:ring-indigo-500/10
+                      placeholder:text-gray-600 transition-all duration-200`;
 
   return (
-    <form onSubmit={handleSubmit} className="p-4 space-y-4 overflow-y-auto flex-1">
+    <form onSubmit={handleSubmit} className="p-5 flex flex-col gap-5 overflow-y-auto flex-1 select-none">
       <div>
-        <label className="text-gray-400 text-xs mb-1 block">Title</label>
+        <label className="text-gray-400 text-xs font-bold uppercase tracking-wider mb-2 block">Project Title</label>
         <input
           value={form.title}
           onChange={(e) => setForm({ ...form, title: e.target.value })}
@@ -55,7 +58,7 @@ function ProjectForm({
       </div>
 
       <div>
-        <label className="text-gray-400 text-xs mb-1 block">Icon (emoji)</label>
+        <label className="text-gray-400 text-xs font-bold uppercase tracking-wider mb-2 block">Icon (emoji)</label>
         <input
           value={form.iconUrl}
           onChange={(e) => setForm({ ...form, iconUrl: e.target.value })}
@@ -65,7 +68,7 @@ function ProjectForm({
       </div>
 
       <div>
-        <label className="text-gray-400 text-xs mb-1 block">Project URL</label>
+        <label className="text-gray-400 text-xs font-bold uppercase tracking-wider mb-2 block">Project URL</label>
         <input
           value={form.projectUrl}
           onChange={(e) => setForm({ ...form, projectUrl: e.target.value })}
@@ -75,25 +78,26 @@ function ProjectForm({
         />
       </div>
 
-      <div className="flex items-center gap-3">
-        <label className="text-gray-400 text-xs">Has iframe preview?</label>
+      <div className="flex items-center justify-between p-3.5 card-surface border border-white/5 rounded-2xl">
+        <span className="text-gray-300 text-xs sm:text-sm font-semibold">Enable iframe preview?</span>
         <button
           type="button"
           onClick={() => setForm({ ...form, hasIframe: !form.hasIframe })}
-          className={`w-10 h-5 rounded-full transition-colors relative ${
+          className={`w-12 h-6 rounded-full transition-colors relative flex items-center shrink-0 ${
             form.hasIframe ? 'bg-emerald-500' : 'bg-white/[0.1]'
           }`}
+          style={{ cursor: 'pointer' }}
         >
           <div
-            className={`w-4 h-4 rounded-full bg-white absolute top-0.5 transition-transform ${
-              form.hasIframe ? 'translate-x-5' : 'translate-x-0.5'
+            className={`w-5 h-5 rounded-full bg-white absolute top-0.5 transition-transform ${
+              form.hasIframe ? 'translate-x-6' : 'translate-x-0.5'
             }`}
           />
         </button>
       </div>
 
       <div>
-        <label className="text-gray-400 text-xs mb-1 block">Live API Endpoint (optional)</label>
+        <label className="text-gray-400 text-xs font-bold uppercase tracking-wider mb-2 block">Live API Endpoint (optional)</label>
         <input
           value={form.liveApiEndpoint}
           onChange={(e) => setForm({ ...form, liveApiEndpoint: e.target.value })}
@@ -103,7 +107,7 @@ function ProjectForm({
       </div>
 
       <div>
-        <label className="text-gray-400 text-xs mb-1 block">Tags (comma-separated)</label>
+        <label className="text-gray-400 text-xs font-bold uppercase tracking-wider mb-2 block">Tags (comma-separated)</label>
         <input
           value={form.tags}
           onChange={(e) => setForm({ ...form, tags: e.target.value })}
@@ -113,31 +117,30 @@ function ProjectForm({
       </div>
 
       <div>
-        <label className="text-gray-400 text-xs mb-1 block">Description (Markdown)</label>
+        <label className="text-gray-400 text-xs font-bold uppercase tracking-wider mb-2 block">Description (Markdown)</label>
         <textarea
           value={form.description}
           onChange={(e) => setForm({ ...form, description: e.target.value })}
-          className={`${inputClass} h-32 resize-none font-mono text-xs`}
+          className={`${inputClass} h-36 resize-none font-mono text-xs`}
           placeholder="## Project Title&#10;&#10;Description..."
         />
       </div>
 
-      <div className="flex gap-2 pt-2">
-        <button
+      <div className="flex gap-3 pt-3">
+        <Button
           type="submit"
-          className="flex-1 py-2 rounded-lg bg-emerald-500/20 border border-emerald-500/30
-                   text-emerald-300 text-sm font-medium hover:bg-emerald-500/30 transition-colors"
+          className="flex-1 py-3 font-semibold text-sm rounded-xl h-11"
         >
-          {project ? 'Update' : 'Create'} Project
-        </button>
-        <button
+          {project ? 'Update' : 'Create'} Project context
+        </Button>
+        <Button
           type="button"
+          variant="neumorphic"
           onClick={onCancel}
-          className="px-4 py-2 rounded-lg bg-white/[0.04] border border-white/[0.08]
-                   text-gray-400 text-sm hover:bg-white/[0.08] transition-colors"
+          className="px-5 font-semibold text-sm rounded-xl h-11"
         >
           Cancel
-        </button>
+        </Button>
       </div>
     </form>
   );
@@ -147,97 +150,86 @@ export default function ControlPanel({ windowId }: { windowId: string }) {
   const isAdmin = useOSStore((s) => s.isAdminAuthenticated);
   const [tab, setTab] = useState<Tab>('list');
   const [editProject, setEditProject] = useState<Project | undefined>();
-  const [notification, setNotification] = useState('');
 
   if (!isAdmin) {
     return (
-      <div className="flex items-center justify-center h-full bg-gray-950/50">
-        <div className="text-center">
-          <div className="text-4xl mb-3">🔒</div>
-          <p className="text-gray-400 text-sm">Access denied</p>
-          <p className="text-gray-600 text-xs mt-1">
-            Use <code className="text-cyan-400">sudo login admin</code> in Terminal
+      <div className="flex items-center justify-center h-full bg-gray-950/50 select-none">
+        <div className="text-center p-6 bg-black/30 border border-white/5 backdrop-blur-md rounded-3xl max-w-xs shadow-2xl">
+          <div className="text-4xl mb-4">🔒</div>
+          <p className="text-gray-200 text-base font-bold">Access Denied</p>
+          <p className="text-gray-500 text-xs mt-2 leading-relaxed">
+            Please run the elevated <code className="text-cyan-400 font-bold bg-white/5 px-1.5 py-0.5 rounded font-mono">sudo login admin</code> shell command inside the Terminal.
           </p>
         </div>
       </div>
     );
   }
 
-  const showNotification = (msg: string) => {
-    setNotification(msg);
-    setTimeout(() => setNotification(''), 3000);
-  };
-
   return (
-    <div className="flex flex-col h-full bg-gray-950/50" data-testid="control-panel">
-      {/* Notification toast */}
-      {notification && (
-        <div className="absolute top-12 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-lg
-                      bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-xs font-medium">
-          {notification}
-        </div>
-      )}
-
+    <div className="flex flex-col h-full bg-gray-950/30 select-none" data-testid="control-panel">
       {/* Tab bar */}
-      <div className="shrink-0 flex items-center gap-1 p-2 border-b border-white/[0.06]">
-        <div className="flex items-center gap-1 px-2">
+      <div className="shrink-0 flex items-center justify-between p-3 border-b border-white/[0.06] bg-black/25">
+        <div className="flex items-center gap-1.5 px-2">
           <span className="text-amber-400 text-xs">🔒</span>
-          <span className="text-amber-400 text-xs font-semibold">Admin</span>
+          <span className="text-amber-400 text-xs font-bold uppercase tracking-wider">D1 Panel</span>
         </div>
-        <div className="h-4 w-px bg-white/[0.06] mx-1" />
-        {(['list', 'add'] as Tab[]).map((t) => (
-          <button
-            key={t}
-            onClick={() => { setTab(t); setEditProject(undefined); }}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-              tab === t ? 'bg-white/[0.08] text-white' : 'text-gray-500 hover:text-gray-300'
-            }`}
-          >
-            {t === 'list' ? 'Projects' : 'Add New'}
-          </button>
-        ))}
+        
+        <div className="flex items-center gap-2">
+          {(['list', 'add'] as Tab[]).map((t) => (
+            <Button
+              key={t}
+              onClick={() => { setTab(t); setEditProject(undefined); }}
+              variant={tab === t ? 'default' : 'neumorphic'}
+              className="h-8.5 px-3.5 text-xs font-semibold rounded-lg"
+            >
+              {t === 'list' ? 'Projects' : 'Add New'}
+            </Button>
+          ))}
+        </div>
       </div>
 
       {/* Content */}
       {tab === 'list' && !editProject && (
-        <div className="flex-1 overflow-y-auto p-3 space-y-2 scrollbar-hide">
-          {/* D1 Schema comment */}
-          <div className="p-3 rounded-lg bg-cyan-500/[0.04] border border-cyan-500/[0.1] mb-3">
-            <p className="text-cyan-400 text-[10px] font-mono">
-              {`/* Drizzle ORM — D1 Schema */`}
-            </p>
-            <p className="text-cyan-400/60 text-[10px] font-mono mt-0.5">
-              {`-- projects(id, user, title, desc, url, has_iframe, live_api_endpoint)`}
-            </p>
-          </div>
-
-          {PROJECTS.map((p) => (
-            <div
-              key={p.id}
-              className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/[0.06]"
-            >
-              <span className="text-xl">{p.iconUrl}</span>
-              <div className="flex-1 min-w-0">
-                <h4 className="text-white text-sm font-medium truncate">{p.title}</h4>
-                <p className="text-gray-600 text-[10px]">{p.userId}</p>
-              </div>
-              <button
-                onClick={() => { setEditProject(p); setTab('edit'); }}
-                className="px-2.5 py-1 rounded-lg bg-white/[0.04] text-gray-400 text-xs
-                         hover:bg-white/[0.08] hover:text-white transition-colors"
-              >
-                Edit
-              </button>
+        <ScrollArea className="flex-1">
+          <div className="flex flex-col p-4 gap-3">
+            {/* D1 Schema Drizzle code view */}
+            <div className="p-4 rounded-2xl bg-cyan-500/[0.03] border border-cyan-500/[0.1] shadow-inner mb-2">
+              <p className="text-cyan-400 text-[10px] font-mono font-bold">
+                {`/* Drizzle ORM — D1 SQLite Database Schema */`}
+              </p>
+              <p className="text-cyan-400/70 text-[10px] font-mono mt-1 leading-relaxed">
+                {`-- projects(id, user, title, desc, url, has_iframe, live_api_endpoint)`}
+              </p>
             </div>
-          ))}
-        </div>
+
+            {PROJECTS.map((p) => (
+              <div
+                key={p.id}
+                className="flex items-center gap-3.5 p-4 rounded-2xl bg-white/[0.02] border border-white/[0.06] hover:border-white/10 transition-colors"
+              >
+                <span className="text-2xl shadow-sm shrink-0">{p.iconUrl}</span>
+                <div className="flex-1 min-w-0">
+                  <h4 className="text-white text-sm sm:text-base font-bold truncate tracking-tight">{p.title}</h4>
+                  <p className="text-gray-500 text-[10px] font-mono mt-0.5">{p.userId}</p>
+                </div>
+                <Button
+                  onClick={() => { setEditProject(p); setTab('edit'); }}
+                  variant="neumorphic"
+                  className="h-9 px-3 text-xs font-semibold rounded-xl"
+                >
+                  Edit
+                </Button>
+              </div>
+            ))}
+          </div>
+        </ScrollArea>
       )}
 
       {(tab === 'add' || tab === 'edit') && (
         <ProjectForm
           project={editProject}
           onSave={(data) => {
-            showNotification(editProject ? '✓ Project updated (mock)' : '✓ Project created (mock)');
+            toast.success(editProject ? 'Project context updated successfully (mock D1)!' : 'New project context created (mock D1)!');
             setTab('list');
             setEditProject(undefined);
           }}
@@ -247,3 +239,4 @@ export default function ControlPanel({ windowId }: { windowId: string }) {
     </div>
   );
 }
+
