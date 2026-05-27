@@ -12,7 +12,6 @@ export interface User {
   avatarUrl: string;
   wallpaper: string;
   accentColor: string;
-  emoji: string;
 }
 
 export interface Project {

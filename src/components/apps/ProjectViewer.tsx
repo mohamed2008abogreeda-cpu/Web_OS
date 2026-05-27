@@ -1,10 +1,11 @@
 'use client';
 // ============================================================
-// ProjectViewer — Hybrid iframe/markdown project display
+// ProjectViewer — Project display with Lucide icons
 // ============================================================
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useOSStore } from '@/store/useOSStore';
 import { USERS, getProjectsForUser } from '@/lib/mockData';
+import { PROJECT_ICONS, ChevronLeft, ExternalLink, Activity, CheckCircle2, FolderOpen } from '@/lib/icons';
 import type { Project, LiveStats } from '@/types';
 
 function LiveStatusWidget({ endpoint }: { endpoint: string }) {
@@ -12,7 +13,6 @@ function LiveStatusWidget({ endpoint }: { endpoint: string }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Mock live stats (in production, fetch the actual endpoint)
     const timer = setTimeout(() => {
       setStats({
         status: 'online',
@@ -23,7 +23,6 @@ function LiveStatusWidget({ endpoint }: { endpoint: string }) {
       setLoading(false);
     }, 1200);
 
-    // Refresh every 15s
     const interval = setInterval(() => {
       setStats((prev) => prev ? {
         ...prev,
@@ -37,9 +36,9 @@ function LiveStatusWidget({ endpoint }: { endpoint: string }) {
 
   if (loading) {
     return (
-      <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/[0.03] border border-white/[0.06]">
-        <div className="w-2 h-2 rounded-full bg-gray-600 animate-pulse" />
-        <span className="text-gray-500 text-xs">Checking status...</span>
+      <div className="flex items-center gap-2 px-3 py-2 card-surface">
+        <div className="w-2 h-2 rounded-full bg-[var(--text-muted)] animate-pulse" />
+        <span className="text-[var(--text-muted)] text-xs">Checking status...</span>
       </div>
     );
   }
@@ -49,75 +48,94 @@ function LiveStatusWidget({ endpoint }: { endpoint: string }) {
   return (
     <div className="flex items-center gap-4 px-4 py-2.5 rounded-xl bg-emerald-500/[0.06] border border-emerald-500/[0.15]">
       <div className="flex items-center gap-2">
-        <div className="relative">
-          <div className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
-          <div className="absolute inset-0 w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping opacity-40" />
-        </div>
+        <div className="status-dot status-dot-online" />
         <span className="text-emerald-300 text-xs font-semibold uppercase tracking-wider">
           {stats.status}
         </span>
       </div>
       <div className="h-3 w-px bg-emerald-500/20" />
-      <span className="text-gray-400 text-[11px]">Uptime: {stats.uptime}</span>
-      <span className="text-gray-400 text-[11px]">Ping: {stats.ping}ms</span>
-      <span className="text-gray-600 text-[10px] ml-auto">{stats.lastChecked}</span>
+      <div className="flex items-center gap-1 text-[var(--text-tertiary)] text-[11px]">
+        <Activity className="w-3 h-3" strokeWidth={1.5} />
+        Uptime: {stats.uptime}
+      </div>
+      <span className="text-[var(--text-tertiary)] text-[11px]">Ping: {stats.ping}ms</span>
+      <span className="text-[var(--text-muted)] text-[10px] ml-auto">{stats.lastChecked}</span>
     </div>
   );
 }
 
-function ProjectCard({ project, onSelect }: { project: Project; onSelect: (p: Project) => void }) {
+function ProjectCard({ project, onSelect, accentColor }: { project: Project; onSelect: (p: Project) => void; accentColor: string }) {
+  const ProjIcon = PROJECT_ICONS[project.id];
+
   return (
     <button
       onClick={() => onSelect(project)}
-      className="w-full flex items-center gap-3 p-3 rounded-xl
-                 bg-white/[0.02] border border-white/[0.06]
-                 hover:bg-white/[0.05] hover:border-white/[0.12]
-                 transition-all duration-200 text-left group"
+      className="w-full flex items-center gap-3 p-3 card-surface text-left group"
     >
-      <div className="w-10 h-10 rounded-xl bg-white/[0.04] border border-white/[0.06]
-                     flex items-center justify-center text-xl shrink-0
-                     group-hover:bg-white/[0.08] transition-colors">
-        {project.iconUrl}
+      <div
+        className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0
+                   group-hover:scale-105 transition-transform"
+        style={{
+          background: `linear-gradient(135deg, ${accentColor}12, ${accentColor}05)`,
+          border: `1px solid ${accentColor}18`,
+        }}
+      >
+        {ProjIcon ? (
+          <ProjIcon className="w-4.5 h-4.5" style={{ color: accentColor }} strokeWidth={1.5} />
+        ) : (
+          <FolderOpen className="w-4.5 h-4.5" style={{ color: accentColor }} strokeWidth={1.5} />
+        )}
       </div>
       <div className="flex-1 min-w-0">
-        <h3 className="text-white text-sm font-medium truncate">{project.title}</h3>
+        <h3 className="text-[var(--text-primary)] text-sm font-medium truncate">{project.title}</h3>
         <div className="flex gap-1.5 mt-1 flex-wrap">
           {project.tags.slice(0, 3).map((tag) => (
-            <span key={tag} className="text-[9px] px-1.5 py-0.5 rounded bg-white/[0.04] text-gray-500">
+            <span key={tag} className="text-[9px] px-1.5 py-0.5 rounded-md bg-[var(--bg-card)] border border-[var(--border-subtle)] text-[var(--text-muted)]">
               {tag}
             </span>
           ))}
         </div>
       </div>
       {project.liveApiEndpoint && (
-        <div className="w-2 h-2 rounded-full bg-emerald-400 shrink-0 animate-pulse" />
+        <div className="status-dot status-dot-online shrink-0" />
       )}
     </button>
   );
 }
 
-function ProjectDetail({ project, onBack }: { project: Project; onBack: () => void }) {
+function ProjectDetail({ project, onBack, accentColor }: { project: Project; onBack: () => void; accentColor: string }) {
   const [iframeError, setIframeError] = useState(false);
+  const ProjIcon = PROJECT_ICONS[project.id];
 
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="shrink-0 p-4 border-b border-white/[0.06]">
+      <div className="shrink-0 p-4 border-b border-[var(--border-subtle)]">
         <div className="flex items-center gap-3 mb-3">
           <button
             onClick={onBack}
-            className="p-1.5 rounded-lg hover:bg-white/[0.06] text-gray-400 hover:text-white transition-colors"
+            className="p-1.5 rounded-lg hover:bg-[var(--bg-card-hover)] text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors"
           >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-            </svg>
+            <ChevronLeft className="w-4 h-4" strokeWidth={2} />
           </button>
-          <span className="text-2xl">{project.iconUrl}</span>
+          <div
+            className="w-10 h-10 rounded-xl flex items-center justify-center"
+            style={{
+              background: `linear-gradient(135deg, ${accentColor}15, ${accentColor}05)`,
+              border: `1px solid ${accentColor}20`,
+            }}
+          >
+            {ProjIcon ? (
+              <ProjIcon className="w-5 h-5" style={{ color: accentColor }} strokeWidth={1.5} />
+            ) : (
+              <FolderOpen className="w-5 h-5" style={{ color: accentColor }} strokeWidth={1.5} />
+            )}
+          </div>
           <div>
-            <h2 className="text-white text-lg font-semibold">{project.title}</h2>
+            <h2 className="text-[var(--text-primary)] text-lg font-semibold">{project.title}</h2>
             <div className="flex gap-1.5 mt-0.5">
               {project.tags.map((tag) => (
-                <span key={tag} className="text-[9px] px-1.5 py-0.5 rounded bg-white/[0.04] text-gray-500">
+                <span key={tag} className="text-[9px] px-1.5 py-0.5 rounded-md bg-[var(--bg-card)] border border-[var(--border-subtle)] text-[var(--text-muted)]">
                   {tag}
                 </span>
               ))}
@@ -128,15 +146,13 @@ function ProjectDetail({ project, onBack }: { project: Project; onBack: () => vo
               href={project.projectUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="px-3 py-1.5 rounded-lg bg-white/[0.06] border border-white/[0.1]
-                       text-gray-300 text-xs hover:bg-white/[0.1] transition-colors"
+              className="btn-ghost text-xs"
             >
-              Open ↗
+              <ExternalLink className="w-3.5 h-3.5" strokeWidth={1.5} />
+              Open
             </a>
           </div>
         </div>
-
-        {/* Live status */}
         {project.liveApiEndpoint && (
           <LiveStatusWidget endpoint={project.liveApiEndpoint} />
         )}
@@ -153,54 +169,48 @@ function ProjectDetail({ project, onBack }: { project: Project; onBack: () => vo
               onError={() => setIframeError(true)}
               title={project.title}
             />
-            {/* Iframe fallback overlay */}
             <div className="absolute bottom-3 right-3">
               <a
                 href={project.projectUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="px-3 py-1.5 rounded-lg bg-black/80 backdrop-blur-sm border border-white/[0.1]
-                         text-gray-300 text-xs hover:bg-black/90 transition-colors"
+                className="btn-ghost text-xs"
               >
-                Open in new tab ↗
+                <ExternalLink className="w-3 h-3" strokeWidth={1.5} />
+                New tab
               </a>
             </div>
           </div>
         ) : (
-          <div className="p-6 prose prose-invert prose-sm max-w-none
-                        prose-headings:text-gray-200 prose-p:text-gray-400
-                        prose-strong:text-gray-300 prose-li:text-gray-400
-                        prose-code:text-cyan-400 prose-code:bg-white/[0.04]
-                        prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded">
-            {/* Simple markdown renderer */}
+          <div className="p-6">
             {project.description.split('\n').map((line, i) => {
               if (line.startsWith('## ')) {
-                return <h2 key={i} className="text-xl font-bold text-white mt-6 mb-3">{line.slice(3)}</h2>;
+                return <h2 key={i} className="text-xl font-bold text-[var(--text-primary)] mt-6 mb-3">{line.slice(3)}</h2>;
               }
               if (line.startsWith('### ')) {
-                return <h3 key={i} className="text-base font-semibold text-gray-200 mt-4 mb-2">{line.slice(4)}</h3>;
+                return <h3 key={i} className="text-base font-semibold text-[var(--text-secondary)] mt-4 mb-2">{line.slice(4)}</h3>;
               }
               if (line.startsWith('- **')) {
                 const match = line.match(/- \*\*(.+?)\*\*:?\s*(.*)/);
                 if (match) {
                   return (
-                    <div key={i} className="flex gap-2 py-0.5 text-gray-400 text-sm">
-                      <span className="text-gray-600">•</span>
-                      <span><strong className="text-gray-300">{match[1]}:</strong> {match[2]}</span>
+                    <div key={i} className="flex gap-2 py-0.5 text-[var(--text-tertiary)] text-sm">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500/50 shrink-0 mt-0.5" strokeWidth={1.5} />
+                      <span><strong className="text-[var(--text-secondary)]">{match[1]}:</strong> {match[2]}</span>
                     </div>
                   );
                 }
               }
               if (line.startsWith('- ')) {
                 return (
-                  <div key={i} className="flex gap-2 py-0.5 text-gray-400 text-sm">
-                    <span className="text-gray-600">•</span>
+                  <div key={i} className="flex gap-2 py-0.5 text-[var(--text-tertiary)] text-sm">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500/50 shrink-0 mt-0.5" strokeWidth={1.5} />
                     <span>{line.slice(2)}</span>
                   </div>
                 );
               }
               if (line.trim() === '') return <div key={i} className="h-2" />;
-              return <p key={i} className="text-gray-400 text-sm leading-relaxed">{line}</p>;
+              return <p key={i} className="text-[var(--text-tertiary)] text-sm leading-relaxed">{line}</p>;
             })}
           </div>
         )}
@@ -213,27 +223,23 @@ export default function ProjectViewer({ windowId }: { windowId: string }) {
   const currentUser = useOSStore((s) => s.currentUser);
   const user = currentUser ? USERS[currentUser] : null;
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
-
   const projects = user ? getProjectsForUser(user.id) : [];
 
   if (selectedProject) {
-    return <ProjectDetail project={selectedProject} onBack={() => setSelectedProject(null)} />;
+    return <ProjectDetail project={selectedProject} onBack={() => setSelectedProject(null)} accentColor={user?.accentColor || '#6366f1'} />;
   }
 
   return (
-    <div className="flex flex-col h-full bg-gray-950/50" data-testid="project-viewer">
-      {/* Header */}
-      <div className="shrink-0 p-4 border-b border-white/[0.06]">
-        <h2 className="text-white text-base font-semibold">
+    <div className="flex flex-col h-full bg-[var(--bg-base)]" data-testid="project-viewer">
+      <div className="shrink-0 p-4 border-b border-[var(--border-subtle)]">
+        <h2 className="text-[var(--text-primary)] text-base font-semibold">
           {currentUser === 'Team' ? 'All Projects' : `${currentUser}'s Projects`}
         </h2>
-        <p className="text-gray-500 text-xs mt-0.5">{projects.length} projects</p>
+        <p className="text-[var(--text-muted)] text-xs mt-0.5">{projects.length} projects</p>
       </div>
-
-      {/* Project list */}
       <div className="flex-1 overflow-y-auto p-3 space-y-2 scrollbar-hide">
         {projects.map((project) => (
-          <ProjectCard key={project.id} project={project} onSelect={setSelectedProject} />
+          <ProjectCard key={project.id} project={project} onSelect={setSelectedProject} accentColor={user?.accentColor || '#6366f1'} />
         ))}
       </div>
     </div>

@@ -1,129 +1,133 @@
 'use client';
 // ============================================================
-// Desktop — Main desktop environment with icons + wallpaper
+// Desktop — Main workspace with Lucide icon grid
 // ============================================================
 import { useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useOSStore } from '@/store/useOSStore';
 import { SYSTEM_APPS, USERS } from '@/lib/mockData';
+import { APP_ICONS } from '@/lib/icons';
 import Taskbar from './Taskbar';
 import WindowManager from './WindowManager';
 
-function DesktopIcon({ app, index }: { app: typeof SYSTEM_APPS[0]; index: number }) {
-  const openWindow = useOSStore((s) => s.openWindow);
-
-  return (
-    <motion.button
-      className="flex flex-col items-center gap-2 p-3 rounded-xl
-                 hover:bg-white/[0.06] active:bg-white/[0.1]
-                 transition-colors cursor-pointer group
-                 w-20 sm:w-24 focus:outline-none"
-      onClick={() => openWindow(app)}
-      initial={{ opacity: 0, scale: 0.8 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ delay: index * 0.05, duration: 0.3 }}
-      whileTap={{ scale: 0.9 }}
-    >
-      <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-white/[0.06] border border-white/[0.08]
-                      flex items-center justify-center text-2xl sm:text-3xl
-                      group-hover:bg-white/[0.1] group-hover:border-white/[0.15]
-                      group-hover:shadow-lg transition-all duration-300
-                      backdrop-blur-sm">
-        {app.icon}
-      </div>
-      <span className="text-gray-400 text-[10px] sm:text-xs font-medium text-center leading-tight
-                        group-hover:text-white transition-colors truncate w-full">
-        {app.title}
-      </span>
-    </motion.button>
-  );
-}
-
-function MobileLauncher() {
-  return (
-    <div className="flex-1 flex items-end pb-4 px-4">
-      <div className="w-full grid grid-cols-4 gap-3 place-items-center">
-        {SYSTEM_APPS.map((app, i) => (
-          <DesktopIcon key={app.id} app={app} index={i} />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function DesktopIcons() {
-  return (
-    <div className="absolute top-4 left-4 flex flex-col gap-1">
-      {SYSTEM_APPS.map((app, i) => (
-        <DesktopIcon key={app.id} app={app} index={i} />
-      ))}
-    </div>
-  );
-}
-
 export default function Desktop() {
-  const { currentUser, isMobile, setMobile } = useOSStore();
+  const { currentUser, openWindow, isMobile, setMobile } = useOSStore();
   const user = currentUser ? USERS[currentUser] : null;
 
   // Detect mobile
   useEffect(() => {
-    const check = () => {
-      const mobile = window.innerWidth < 768 ||
-        /Android|webOS|iPhone|iPad|iPod|BlackBerry|Samsung/i.test(navigator.userAgent);
-      setMobile(mobile);
-    };
+    const check = () => setMobile(window.innerWidth < 768);
     check();
     window.addEventListener('resize', check);
     return () => window.removeEventListener('resize', check);
   }, [setMobile]);
-
-  if (!user) return null;
 
   return (
     <motion.div
       className="fixed inset-0 flex flex-col overflow-hidden"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      transition={{ duration: 0.4 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.5 }}
       data-testid="desktop"
     >
-      {/* Wallpaper background */}
-      <div
-        className="absolute inset-0 transition-all duration-700"
-        style={{
-          background: `
-            radial-gradient(ellipse at 20% 20%, ${user.accentColor}12, transparent 50%),
-            radial-gradient(ellipse at 80% 80%, ${user.accentColor}08, transparent 50%),
-            linear-gradient(135deg, #0a0a0f 0%, #0d0d14 50%, #0a0a12 100%)
-          `,
-        }}
-      />
-
-      {/* Subtle noise texture */}
-      <div className="absolute inset-0 opacity-[0.015]"
-        style={{
-          backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.15) 1px, transparent 1px)',
-          backgroundSize: '24px 24px',
-        }}
-      />
-
-      {/* User indicator */}
-      <div className="absolute top-4 right-4 z-50 flex items-center gap-2 px-3 py-1.5 rounded-full
-                      bg-black/40 backdrop-blur-xl border border-white/[0.06]">
-        <span className="text-sm">{user.emoji}</span>
-        <span className="text-gray-400 text-[11px] font-medium">{currentUser}</span>
-        <div className="w-1.5 h-1.5 rounded-full animate-pulse"
-          style={{ backgroundColor: user.accentColor }}
+      {/* Wallpaper — gradient background */}
+      <div className="absolute inset-0 bg-[var(--bg-base)]">
+        {/* Ambient glows based on user accent */}
+        <div
+          className="absolute top-0 left-0 w-full h-full"
+          style={{
+            background: `
+              radial-gradient(ellipse at 20% 20%, ${user?.accentColor}08 0%, transparent 50%),
+              radial-gradient(ellipse at 80% 80%, ${user?.accentColor}05 0%, transparent 50%),
+              radial-gradient(ellipse at 50% 50%, rgba(255,255,255,0.01) 0%, transparent 80%)
+            `,
+          }}
+        />
+        {/* Subtle grid pattern */}
+        <div className="absolute inset-0 opacity-[0.015]"
+          style={{
+            backgroundImage: `
+              linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px),
+              linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)
+            `,
+            backgroundSize: '60px 60px',
+          }}
         />
       </div>
 
-      {/* Desktop content area (above taskbar) */}
-      <div className="relative flex-1 overflow-hidden" style={{ marginBottom: '56px' }}>
-        {/* Window Manager renders all open windows here */}
-        <WindowManager />
+      {/* Desktop content area */}
+      <div className="flex-1 relative">
+        {/* Icon grid */}
+        <div className={`
+          absolute z-10 p-6
+          ${isMobile
+            ? 'inset-0 flex flex-col justify-end pb-20'
+            : 'top-0 left-0'
+          }
+        `}>
+          <div className={`
+            ${isMobile
+              ? 'grid grid-cols-4 gap-4 px-2'
+              : 'flex flex-col gap-2'
+            }
+          `}>
+            {SYSTEM_APPS.map((app, i) => {
+              const IconComponent = APP_ICONS[app.id];
 
-        {/* Icons: desktop layout or mobile launcher */}
-        {isMobile ? <MobileLauncher /> : <DesktopIcons />}
+              return (
+                <motion.button
+                  key={app.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 + i * 0.05 }}
+                  onClick={() => openWindow(app)}
+                  className={`
+                    group flex items-center gap-3 rounded-xl
+                    transition-all duration-200
+                    focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/20
+                    ${isMobile
+                      ? 'flex-col gap-1.5 p-3 hover:bg-white/[0.06] active:scale-95'
+                      : 'px-3 py-2.5 hover:bg-white/[0.04] w-28'
+                    }
+                  `}
+                >
+                  {/* Icon */}
+                  <div
+                    className={`
+                      icon-container shrink-0
+                      ${isMobile ? 'w-12 h-12' : 'w-10 h-10'}
+                    `}
+                    style={{
+                      background: `linear-gradient(135deg, ${user?.accentColor}12, ${user?.accentColor}06)`,
+                      borderColor: `${user?.accentColor}18`,
+                    }}
+                  >
+                    {IconComponent && (
+                      <IconComponent
+                        className={`${isMobile ? 'w-5 h-5' : 'w-4.5 h-4.5'} transition-colors`}
+                        style={{ color: user?.accentColor }}
+                        strokeWidth={1.5}
+                      />
+                    )}
+                  </div>
+
+                  {/* Label */}
+                  <span className={`
+                    text-[var(--text-secondary)] group-hover:text-[var(--text-primary)]
+                    transition-colors font-medium
+                    ${isMobile ? 'text-[10px]' : 'text-xs'}
+                  `}>
+                    {app.title}
+                  </span>
+                </motion.button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Window Manager */}
+        <WindowManager />
       </div>
 
       {/* Taskbar */}

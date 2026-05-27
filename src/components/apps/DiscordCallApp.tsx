@@ -1,11 +1,12 @@
 'use client';
 // ============================================================
-// DiscordCallApp — WebRTC VoIP interface (Comms)
+// DiscordCallApp — WebRTC VoIP with Lucide icons
 // ============================================================
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useOSStore } from '@/store/useOSStore';
 import { USERS } from '@/lib/mockData';
+import { Phone, PhoneOff, PhoneCall, Mic, MicOff, AlertCircle, Wifi, Info } from '@/lib/icons';
 
 type CallState = 'idle' | 'requesting' | 'ringing' | 'connected' | 'ended' | 'error';
 
@@ -20,7 +21,6 @@ export default function DiscordCallApp({ windowId }: { windowId: string }) {
   const streamRef = useRef<MediaStream | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
       streamRef.current?.getTracks().forEach((t) => t.stop());
@@ -39,13 +39,10 @@ export default function DiscordCallApp({ windowId }: { windowId: string }) {
     setErrorMsg('');
 
     try {
-      // Request mic permissions
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
-
       setCallState('ringing');
 
-      // Simulate Discord bridge API call
       try {
         await fetch('/api/discord-call', {
           method: 'POST',
@@ -55,11 +52,8 @@ export default function DiscordCallApp({ windowId }: { windowId: string }) {
             timestamp: new Date().toISOString(),
           }),
         });
-      } catch {
-        // API might not exist yet in dev — continue with mock
-      }
+      } catch {}
 
-      // Simulate ringing → connected
       setTimeout(() => {
         setCallState('connected');
         setDuration(0);
@@ -67,7 +61,7 @@ export default function DiscordCallApp({ windowId }: { windowId: string }) {
           setDuration((prev) => prev + 1);
         }, 1000);
       }, 3000);
-    } catch (err) {
+    } catch {
       setCallState('error');
       setErrorMsg('Microphone access denied. Please allow mic permissions.');
     }
@@ -90,8 +84,21 @@ export default function DiscordCallApp({ windowId }: { windowId: string }) {
     }
   }, [isMuted]);
 
+  // Icon + color based on call state
+  const stateConfig = {
+    idle: { icon: Phone, color: 'var(--text-tertiary)', bg: 'var(--bg-card)', border: 'var(--border-default)' },
+    requesting: { icon: Mic, color: 'var(--text-secondary)', bg: 'var(--bg-card)', border: 'var(--border-default)' },
+    ringing: { icon: Wifi, color: '#f59e0b', bg: 'rgba(245,158,11,0.08)', border: 'rgba(245,158,11,0.25)' },
+    connected: { icon: PhoneCall, color: '#10b981', bg: 'rgba(16,185,129,0.08)', border: 'rgba(16,185,129,0.25)' },
+    ended: { icon: PhoneOff, color: 'var(--text-muted)', bg: 'var(--bg-card)', border: 'var(--border-subtle)' },
+    error: { icon: AlertCircle, color: '#ef4444', bg: 'rgba(239,68,68,0.08)', border: 'rgba(239,68,68,0.25)' },
+  };
+
+  const config = stateConfig[callState];
+  const StateIcon = config.icon;
+
   return (
-    <div className="flex flex-col h-full bg-gray-950/50 items-center justify-center p-6"
+    <div className="flex flex-col h-full bg-[var(--bg-base)] items-center justify-center p-6"
       data-testid="discord-call-app">
 
       {/* Accent ring */}
@@ -100,35 +107,45 @@ export default function DiscordCallApp({ windowId }: { windowId: string }) {
           {callState === 'ringing' && (
             <motion.div
               className="absolute inset-0 rounded-full"
-              style={{ border: `2px solid ${user?.accentColor}40` }}
+              style={{ border: `2px solid rgba(245,158,11,0.3)` }}
               initial={{ scale: 1, opacity: 0.6 }}
               animate={{ scale: 2.5, opacity: 0 }}
               transition={{ duration: 1.5, repeat: Infinity }}
             />
           )}
+          {callState === 'connected' && (
+            <motion.div
+              className="absolute inset-0 rounded-full"
+              style={{ border: `2px solid rgba(16,185,129,0.2)` }}
+              initial={{ scale: 1, opacity: 0.4 }}
+              animate={{ scale: 1.8, opacity: 0 }}
+              transition={{ duration: 2, repeat: Infinity }}
+            />
+          )}
         </AnimatePresence>
 
         <div
-          className={`w-24 h-24 rounded-full flex items-center justify-center text-4xl
-                     border-2 transition-all duration-500 ${
-                       callState === 'connected'
-                         ? 'border-emerald-500/40 bg-emerald-500/10 shadow-lg shadow-emerald-500/20'
-                         : callState === 'ringing'
-                         ? 'border-amber-500/40 bg-amber-500/10 animate-pulse'
-                         : callState === 'error'
-                         ? 'border-red-500/40 bg-red-500/10'
-                         : 'border-white/[0.1] bg-white/[0.03]'
-                     }`}
+          className="w-24 h-24 rounded-full flex items-center justify-center
+                     border-2 transition-all duration-500"
+          style={{
+            borderColor: config.border,
+            background: config.bg,
+            boxShadow: callState === 'connected'
+              ? '0 8px 32px rgba(16,185,129,0.15)'
+              : undefined,
+          }}
         >
-          {callState === 'error' ? '❌' :
-           callState === 'connected' ? '🎙️' :
-           callState === 'ringing' ? '📡' : '📞'}
+          <StateIcon
+            className="w-10 h-10 transition-colors duration-500"
+            style={{ color: config.color }}
+            strokeWidth={1.5}
+          />
         </div>
       </div>
 
       {/* Status text */}
       <div className="text-center mb-8">
-        <h3 className="text-white text-lg font-semibold mb-1">
+        <h3 className="text-[var(--text-primary)] text-lg font-semibold mb-1">
           {callState === 'idle' && 'Call the Team'}
           {callState === 'requesting' && 'Requesting Microphone...'}
           {callState === 'ringing' && 'Ringing...'}
@@ -136,7 +153,7 @@ export default function DiscordCallApp({ windowId }: { windowId: string }) {
           {callState === 'ended' && 'Call Ended'}
           {callState === 'error' && 'Connection Failed'}
         </h3>
-        <p className="text-gray-500 text-sm">
+        <p className="text-[var(--text-muted)] text-sm">
           {callState === 'idle' && 'Initiate a voice call via Discord bridge'}
           {callState === 'requesting' && 'Please allow microphone access'}
           {callState === 'ringing' && 'Pinging Discord server...'}
@@ -157,34 +174,26 @@ export default function DiscordCallApp({ windowId }: { windowId: string }) {
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
           >
-            <svg className="w-7 h-7 text-white" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z" />
-            </svg>
+            <Phone className="w-7 h-7 text-white" strokeWidth={2} />
           </motion.button>
         ) : (
           <>
-            {/* Mute button */}
             <motion.button
               onClick={toggleMute}
               className={`w-12 h-12 rounded-full flex items-center justify-center transition-colors ${
                 isMuted
                   ? 'bg-amber-500/20 border border-amber-500/30 text-amber-400'
-                  : 'bg-white/[0.06] border border-white/[0.1] text-gray-400'
+                  : 'bg-[var(--bg-card)] border border-[var(--border-default)] text-[var(--text-tertiary)]'
               }`}
               whileTap={{ scale: 0.9 }}
             >
               {isMuted ? (
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M19 11h-1.7c0 .74-.16 1.43-.43 2.05l1.23 1.23c.56-.98.9-2.09.9-3.28zm-4.02.17c0-.06.02-.11.02-.17V5c0-1.66-1.34-3-3-3S9 3.34 9 5v.18l5.98 5.99zM4.27 3L3 4.27l6.01 6.01V11c0 1.66 1.33 3 2.99 3 .22 0 .44-.03.65-.08l1.66 1.66c-.71.33-1.5.52-2.31.52-2.76 0-5.3-2.1-5.3-5.1H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c.91-.13 1.77-.45 2.54-.9L19.73 21 21 19.73 4.27 3z" />
-                </svg>
+                <MicOff className="w-5 h-5" strokeWidth={1.5} />
               ) : (
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M12 14c1.66 0 2.99-1.34 2.99-3L15 5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z" />
-                </svg>
+                <Mic className="w-5 h-5" strokeWidth={1.5} />
               )}
             </motion.button>
 
-            {/* End call */}
             <motion.button
               onClick={endCall}
               className="w-16 h-16 rounded-full bg-red-500 hover:bg-red-400
@@ -193,17 +202,16 @@ export default function DiscordCallApp({ windowId }: { windowId: string }) {
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
             >
-              <svg className="w-7 h-7 text-white rotate-[135deg]" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z" />
-              </svg>
+              <PhoneOff className="w-7 h-7 text-white" strokeWidth={2} />
             </motion.button>
           </>
         )}
       </div>
 
       {/* Info footer */}
-      <div className="mt-8 px-4 py-2.5 rounded-xl bg-white/[0.02] border border-white/[0.06] max-w-xs">
-        <p className="text-gray-500 text-[10px] text-center leading-relaxed">
+      <div className="mt-8 px-4 py-3 card-surface max-w-xs flex items-start gap-2.5">
+        <Info className="w-4 h-4 text-[var(--text-muted)] shrink-0 mt-0.5" strokeWidth={1.5} />
+        <p className="text-[var(--text-muted)] text-[11px] leading-relaxed">
           Uses WebRTC for voice and a Next.js API route to bridge to Discord.
           The team will receive a ping in their Discord server.
         </p>

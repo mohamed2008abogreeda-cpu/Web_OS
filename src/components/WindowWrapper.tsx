@@ -1,11 +1,13 @@
 'use client';
 // ============================================================
-// WindowWrapper — Draggable, resizable window using react-rnd
+// WindowWrapper — Draggable/Resizable window with Lucide icons
 // ============================================================
 import { useRef, useCallback } from 'react';
 import { Rnd } from 'react-rnd';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { useOSStore } from '@/store/useOSStore';
+import { USERS } from '@/lib/mockData';
+import { APP_ICONS, Minus, Maximize2, X } from '@/lib/icons';
 import type { WindowState } from '@/types';
 
 interface WindowWrapperProps {
@@ -15,137 +17,189 @@ interface WindowWrapperProps {
 
 export default function WindowWrapper({ window: win, children }: WindowWrapperProps) {
   const {
+    activeWindowId,
+    currentUser,
+    isMobile,
+    focusWindow,
     closeWindow,
     minimizeWindow,
     maximizeWindow,
-    focusWindow,
+    restoreWindow,
     updateWindowPosition,
     updateWindowSize,
-    activeWindowId,
   } = useOSStore();
 
-  const rndRef = useRef<Rnd>(null);
+  const user = currentUser ? USERS[currentUser] : null;
   const isActive = activeWindowId === win.id;
+  const rndRef = useRef<Rnd>(null);
+  const AppIcon = APP_ICONS[win.appId];
 
   const handleFocus = useCallback(() => {
     if (!isActive) focusWindow(win.id);
   }, [isActive, focusWindow, win.id]);
 
-  if (win.isMinimized) return null;
-
-  const isMax = win.isMaximized;
-
-  return (
-    <AnimatePresence>
-      <Rnd
-        ref={rndRef}
-        default={{
-          x: win.x,
-          y: win.y,
-          width: win.width,
-          height: win.height,
-        }}
-        position={isMax ? { x: 0, y: 0 } : undefined}
-        size={
-          isMax
-            ? { width: '100%', height: 'calc(100vh - 56px)' }
-            : undefined
-        }
-        disableDragging={isMax}
-        enableResizing={!isMax}
-        minWidth={360}
-        minHeight={240}
-        bounds="parent"
-        dragHandleClassName="window-drag-handle"
+  // Mobile: full-screen windows
+  if (isMobile || win.isMaximized) {
+    return (
+      <motion.div
+        className="fixed inset-0 z-50 flex flex-col"
         style={{ zIndex: win.zIndex }}
-        onDragStart={handleFocus}
-        onDragStop={(_e, d) => {
-          updateWindowPosition(win.id, d.x, d.y);
-        }}
-        onResizeStop={(_e, _dir, ref, _delta, position) => {
-          updateWindowSize(
-            win.id,
-            parseInt(ref.style.width),
-            parseInt(ref.style.height)
-          );
-          updateWindowPosition(win.id, position.x, position.y);
-        }}
-        onMouseDown={handleFocus}
-        data-testid={`window-${win.appId}`}
+        initial={{ opacity: 0, scale: 0.98 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.98 }}
+        transition={{ duration: 0.2 }}
+        onClick={handleFocus}
       >
-        <motion.div
-          className={`
-            flex flex-col w-full h-full rounded-xl overflow-hidden
-            border backdrop-blur-2xl shadow-2xl
-            ${isActive
-              ? 'border-white/[0.12] bg-gray-950/90 shadow-black/60'
-              : 'border-white/[0.06] bg-gray-950/80 shadow-black/40 opacity-95'
-            }
-          `}
-          initial={{ opacity: 0, scale: 0.92 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.92 }}
-          transition={{ duration: 0.2, ease: 'easeOut' }}
+        {/* Title bar */}
+        <div
+          className="h-12 flex items-center px-4 gap-3 shrink-0
+                     bg-[var(--bg-elevated)] border-b border-[var(--border-subtle)]"
+          style={{
+            boxShadow: isActive ? `0 1px 0 ${user?.accentColor}15` : undefined,
+          }}
         >
-          {/* ─── Title Bar ────────────────────────────── */}
-          <div
-            className={`
-              window-drag-handle flex items-center justify-between h-10 px-3
-              border-b select-none cursor-default shrink-0
-              ${isActive ? 'border-white/[0.08] bg-white/[0.03]' : 'border-white/[0.04] bg-white/[0.01]'}
-            `}
-            onDoubleClick={() => maximizeWindow(win.id)}
-          >
-            {/* Window Controls (macOS style) */}
-            <div className="flex items-center gap-2">
-              <button
-                onClick={(e) => { e.stopPropagation(); closeWindow(win.id); }}
-                className="w-3 h-3 rounded-full bg-red-500/80 hover:bg-red-500 transition-colors
-                           flex items-center justify-center group"
-                data-testid={`close-${win.appId}`}
-                aria-label="Close"
-              >
-                <svg className="w-1.5 h-1.5 text-red-900 opacity-0 group-hover:opacity-100" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth={4} strokeLinecap="round" />
-                </svg>
-              </button>
-              <button
-                onClick={(e) => { e.stopPropagation(); minimizeWindow(win.id); }}
-                className="w-3 h-3 rounded-full bg-yellow-500/80 hover:bg-yellow-500 transition-colors
-                           flex items-center justify-center group"
-                aria-label="Minimize"
-              >
-                <svg className="w-1.5 h-1.5 text-yellow-900 opacity-0 group-hover:opacity-100" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M5 12h14" stroke="currentColor" strokeWidth={4} strokeLinecap="round" />
-                </svg>
-              </button>
-              <button
-                onClick={(e) => { e.stopPropagation(); maximizeWindow(win.id); }}
-                className="w-3 h-3 rounded-full bg-green-500/80 hover:bg-green-500 transition-colors
-                           flex items-center justify-center group"
-                aria-label="Maximize"
-              >
-                <svg className="w-1.5 h-1.5 text-green-900 opacity-0 group-hover:opacity-100" fill="currentColor" viewBox="0 0 24 24">
-                  <rect x="4" y="4" width="16" height="16" rx="2" stroke="currentColor" strokeWidth={3} fill="none" />
-                </svg>
-              </button>
-            </div>
-
-            {/* Title */}
-            <span className="text-gray-400 text-xs font-medium tracking-wide truncate mx-4">
+          {/* Icon + Title */}
+          <div className="flex items-center gap-2.5 flex-1 min-w-0">
+            {AppIcon && (
+              <AppIcon
+                className="w-4 h-4 shrink-0"
+                style={{ color: isActive ? user?.accentColor : 'var(--text-muted)' }}
+                strokeWidth={1.5}
+              />
+            )}
+            <span className="text-[var(--text-secondary)] text-sm font-medium truncate">
               {win.title}
             </span>
-
-            {/* Spacer for symmetry */}
-            <div className="w-16" />
           </div>
 
-          {/* ─── Content ──────────────────────────────── */}
-          <div className="flex-1 overflow-hidden">
-            {children}
+          {/* Controls */}
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => minimizeWindow(win.id)}
+              className="w-8 h-8 rounded-lg flex items-center justify-center
+                         text-[var(--text-muted)] hover:bg-white/[0.06] hover:text-[var(--text-secondary)]
+                         transition-colors"
+            >
+              <Minus className="w-3.5 h-3.5" strokeWidth={2} />
+            </button>
+            {win.isMaximized && !isMobile && (
+              <button
+                onClick={() => restoreWindow(win.id)}
+                className="w-8 h-8 rounded-lg flex items-center justify-center
+                           text-[var(--text-muted)] hover:bg-white/[0.06] hover:text-[var(--text-secondary)]
+                           transition-colors"
+              >
+                <Maximize2 className="w-3.5 h-3.5" strokeWidth={2} />
+              </button>
+            )}
+            <button
+              onClick={() => closeWindow(win.id)}
+              className="w-8 h-8 rounded-lg flex items-center justify-center
+                         text-[var(--text-muted)] hover:bg-rose-500/15 hover:text-rose-400
+                         transition-colors"
+            >
+              <X className="w-3.5 h-3.5" strokeWidth={2} />
+            </button>
           </div>
-        </motion.div>
-      </Rnd>
-    </AnimatePresence>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-hidden bg-[var(--bg-base)]">
+          {children}
+        </div>
+      </motion.div>
+    );
+  }
+
+  // Desktop: draggable/resizable
+  return (
+    <Rnd
+      ref={rndRef}
+      default={{
+        x: win.x,
+        y: win.y,
+        width: win.width,
+        height: win.height,
+      }}
+      minWidth={360}
+      minHeight={240}
+      style={{ zIndex: win.zIndex, display: win.isMinimized ? 'none' : 'flex' }}
+      dragHandleClassName="window-drag-handle"
+      onDragStop={(_e, d) => updateWindowPosition(win.id, d.x, d.y)}
+      onResizeStop={(_e, _dir, ref, _delta, pos) => {
+        updateWindowSize(win.id, parseInt(ref.style.width), parseInt(ref.style.height));
+        updateWindowPosition(win.id, pos.x, pos.y);
+      }}
+      onMouseDown={handleFocus}
+      bounds="parent"
+    >
+      <motion.div
+        className={`
+          flex flex-col w-full h-full rounded-2xl overflow-hidden
+          border transition-all duration-200
+          ${isActive
+            ? 'border-[var(--border-default)] shadow-xl shadow-black/40'
+            : 'border-[var(--border-subtle)] shadow-lg shadow-black/30 opacity-[0.92]'
+          }
+        `}
+        initial={{ opacity: 0, scale: 0.95, y: 12 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 12 }}
+        transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+        style={{
+          boxShadow: isActive
+            ? `0 16px 48px rgba(0,0,0,0.5), 0 0 0 1px ${user?.accentColor}10`
+            : undefined,
+        }}
+      >
+        {/* Title bar */}
+        <div className="window-drag-handle h-11 flex items-center px-4 gap-3 shrink-0
+                        bg-[var(--bg-elevated)] border-b border-[var(--border-subtle)]">
+          {/* macOS-style traffic lights */}
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => closeWindow(win.id)}
+              className="w-3 h-3 rounded-full bg-rose-500/70 hover:bg-rose-500
+                         transition-colors group relative"
+            >
+              <X className="w-2 h-2 absolute inset-0.5 text-rose-900 opacity-0 group-hover:opacity-100 transition-opacity" strokeWidth={3} />
+            </button>
+            <button
+              onClick={() => minimizeWindow(win.id)}
+              className="w-3 h-3 rounded-full bg-amber-500/70 hover:bg-amber-500
+                         transition-colors group relative"
+            >
+              <Minus className="w-2 h-2 absolute inset-0.5 text-amber-900 opacity-0 group-hover:opacity-100 transition-opacity" strokeWidth={3} />
+            </button>
+            <button
+              onClick={() => maximizeWindow(win.id)}
+              className="w-3 h-3 rounded-full bg-emerald-500/70 hover:bg-emerald-500
+                         transition-colors group relative"
+            >
+              <Maximize2 className="w-1.5 h-1.5 absolute inset-[3px] text-emerald-900 opacity-0 group-hover:opacity-100 transition-opacity" strokeWidth={3} />
+            </button>
+          </div>
+
+          {/* App icon + Title */}
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            {AppIcon && (
+              <AppIcon
+                className="w-3.5 h-3.5 shrink-0"
+                style={{ color: isActive ? user?.accentColor : 'var(--text-muted)' }}
+                strokeWidth={1.5}
+              />
+            )}
+            <span className="text-[var(--text-secondary)] text-xs font-medium truncate">
+              {win.title}
+            </span>
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-hidden bg-[var(--bg-base)]">
+          {children}
+        </div>
+      </motion.div>
+    </Rnd>
   );
 }

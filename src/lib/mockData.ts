@@ -13,7 +13,6 @@ export const USERS: Record<string, User> = {
     avatarUrl: '/avatars/mohammed.svg',
     wallpaper: '/wallpapers/dark-grid.svg',
     accentColor: '#6366f1',
-    emoji: '🧑‍💻',
   },
   Moamen: {
     id: 'user-2',
@@ -23,7 +22,6 @@ export const USERS: Record<string, User> = {
     avatarUrl: '/avatars/moamen.svg',
     wallpaper: '/wallpapers/dark-waves.svg',
     accentColor: '#06b6d4',
-    emoji: '🎨',
   },
   Team: {
     id: 'user-team',
@@ -33,7 +31,6 @@ export const USERS: Record<string, User> = {
     avatarUrl: '/avatars/team.svg',
     wallpaper: '/wallpapers/dark-matrix.svg',
     accentColor: '#a855f7',
-    emoji: '🚀',
   },
 };
 
