@@ -254,6 +254,14 @@ export const SYSTEM_APPS: AppDefinition[] = [
     defaultHeight: 500,
   },
   {
+    id: 'app-music',
+    title: 'Music',
+    icon: '🎵',
+    component: 'MusicApp',
+    defaultWidth: 380,
+    defaultHeight: 500,
+  },
+  {
     id: 'app-settings',
     title: 'Settings',
     icon: '⚙️',

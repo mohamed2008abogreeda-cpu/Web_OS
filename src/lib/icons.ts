@@ -7,6 +7,7 @@ import {
   Phone,
   User,
   Settings,
+  Music,
   ShieldCheck,
   Castle,
   Bot,
@@ -61,6 +62,7 @@ export const APP_ICONS: Record<string, LucideIcon> = {
   'app-terminal': Terminal,
   'app-comms': Phone,
   'app-about': User,
+  'app-music': Music,
   'app-settings': Settings,
   'app-control-panel': ShieldCheck,
 };
@@ -143,6 +145,7 @@ export {
   Image,
   ClipboardList,
   FlaskConical,
+  Music,
 };
 
 export type { LucideIcon };

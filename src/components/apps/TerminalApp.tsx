@@ -1,6 +1,6 @@
 'use client';
 // ============================================================
-// TerminalApp — CLI with secret admin trigger
+// TerminalApp — Cute Pink Retro CRT Bash Terminal
 // ============================================================
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useOSStore } from '@/store/useOSStore';
@@ -23,14 +23,22 @@ const CONTROL_PANEL_APP: AppDefinition = {
   defaultHeight: 520,
 };
 
+const INITIAL_LINES: TermLine[] = [
+  { type: 'success', content: `       /\\          *** Arch Linux` },
+  { type: 'success', content: `      /  \\         --------------` },
+  { type: 'success', content: `     /\\   \\        OS: Arch Linux` },
+  { type: 'success', content: `    /  __  \\       Kernel: 6.9.0-zen1-1-zen` },
+  { type: 'success', content: `   /  (  )  \\      Uptime: 10 mins` },
+  { type: 'success', content: `  /  /    \\  \\     Shell: bash 5.1.16` },
+  { type: 'success', content: ` /  /      \\  \\    DE: GNOME` },
+  { type: 'success', content: `/_ /________\\ _\\   CPU: Ryzen 7 5800H with Radeon Graphics (16)` },
+  { type: 'success', content: `                   Memory: 2623MiB / 15302MiB` },
+  { type: 'output', content: '' },
+  { type: 'system', content: '~ /home/demeter' },
+];
+
 export default function TerminalApp({ windowId }: { windowId: string }) {
-  const [lines, setLines] = useState<TermLine[]>([
-    { type: 'system', content: '╔══════════════════════════════════════════════╗' },
-    { type: 'system', content: '║  WebOS Terminal v2.0.0                       ║' },
-    { type: 'system', content: '║  Type "help" for available commands          ║' },
-    { type: 'system', content: '╚══════════════════════════════════════════════╝' },
-    { type: 'output', content: '' },
-  ]);
+  const [lines, setLines] = useState<TermLine[]>(INITIAL_LINES);
   const [input, setInput] = useState('');
   const [awaitingPassword, setAwaitingPassword] = useState(false);
   const [history, setHistory] = useState<string[]>([]);
@@ -69,23 +77,16 @@ export default function TerminalApp({ windowId }: { windowId: string }) {
   }, []);
 
   const generateNeofetch = (): TermLine[] => {
-    const accent = user?.accentColor || '#6366f1';
     return [
-      { type: 'success', content: `       ██╗    ██╗ ██████╗ ███████╗` },
-      { type: 'success', content: `       ██║    ██║██╔═══██╗██╔════╝` },
-      { type: 'success', content: `       ██║ █╗ ██║██║   ██║███████╗` },
-      { type: 'success', content: `       ██║███╗██║██║   ██║╚════██║` },
-      { type: 'success', content: `       ╚███╔███╔╝╚██████╔╝███████║` },
-      { type: 'success', content: `        ╚══╝╚══╝  ╚═════╝ ╚══════╝` },
-      { type: 'output', content: '' },
-      { type: 'output', content: `  User:     ${currentUser}` },
-      { type: 'output', content: `  Role:     ${user?.role}` },
-      { type: 'output', content: `  OS:       WebOS Portfolio v2.0.0` },
-      { type: 'output', content: `  Shell:    webos-term 2.0` },
-      { type: 'output', content: `  Runtime:  Next.js 16 + React 19` },
-      { type: 'output', content: `  State:    Zustand 5.x` },
-      { type: 'output', content: `  Accent:   ${accent}` },
-      { type: 'output', content: `  Backend:  Cloudflare D1 + R2` },
+      { type: 'success', content: `       /\\          *** Arch Linux` },
+      { type: 'success', content: `      /  \\         --------------` },
+      { type: 'success', content: `     /\\   \\        OS: Arch Linux` },
+      { type: 'success', content: `    /  __  \\       Kernel: 6.9.0-zen1-1-zen` },
+      { type: 'success', content: `   /  (  )  \\      Uptime: 10 mins` },
+      { type: 'success', content: `  /  /    \\  \\     Shell: bash 5.1.16` },
+      { type: 'success', content: ` /  /      \\  \\    DE: GNOME` },
+      { type: 'success', content: `/_ /________\\ _\\   CPU: Ryzen 7 5800H with Radeon Graphics (16)` },
+      { type: 'success', content: `                   Memory: 2623MiB / 15302MiB` },
       { type: 'output', content: '' },
     ];
   };
@@ -115,9 +116,13 @@ export default function TerminalApp({ windowId }: { windowId: string }) {
     // Add to history
     setHistory((prev) => [cmd, ...prev].slice(0, 50));
     setHistoryIndex(-1);
-    addLine('input', `${currentUser?.toLowerCase()}@webos:~$ ${cmd}`);
+    
+    addLine('input', `-> % ${cmd}`);
 
-    if (trimmed === '') return;
+    if (trimmed === '') {
+      addLine('system', `~ /home/demeter`);
+      return;
+    }
 
     // Command routing
     switch (true) {
@@ -151,9 +156,9 @@ export default function TerminalApp({ windowId }: { windowId: string }) {
       case trimmed === 'whoami':
         addLines([
           { type: 'output', content: '' },
-          { type: 'output', content: `  User:  ${currentUser}` },
-          { type: 'output', content: `  Role:  ${user?.role}` },
-          { type: 'output', content: `  ID:    ${user?.id}` },
+          { type: 'output', content: `  User:  ${currentUser || 'demeter'}` },
+          { type: 'output', content: `  Role:  ${user?.role || 'Developer'}` },
+          { type: 'output', content: `  ID:    ${user?.id || 'user-default'}` },
           { type: 'output', content: '' },
         ]);
         break;
@@ -167,7 +172,7 @@ export default function TerminalApp({ windowId }: { windowId: string }) {
         const projs = getProjectsForUser(userId);
         addLines([
           { type: 'output', content: '' },
-          { type: 'system', content: `  Projects for ${currentUser}: (${projs.length})` },
+          { type: 'system', content: `  Projects for ${currentUser || 'demeter'}: (${projs.length})` },
           { type: 'output', content: '  ──────────────────────────────────────' },
           ...projs.map((p) => ({
             type: 'output' as const,
@@ -183,11 +188,11 @@ export default function TerminalApp({ windowId }: { windowId: string }) {
         break;
 
       case trimmed === 'uname -a':
-        addLine('output', '  WebOS 2.0.0 x86_64 Next.js/16 React/19 Cloudflare-Edge');
+        addLine('output', '  Arch Linux 6.9.0-zen1-1-zen x86_64 GNOME bash');
         break;
 
       case trimmed === 'uptime':
-        addLine('output', `  System up since ${new Date(Date.now() - 86400000).toISOString()}`);
+        addLine('output', '  uptime: 10 mins');
         break;
 
       case trimmed === 'sudo login admin':
@@ -197,7 +202,7 @@ export default function TerminalApp({ windowId }: { windowId: string }) {
           { type: 'system', content: '  Enter admin password:' },
         ]);
         setAwaitingPassword(true);
-        break;
+        return;
 
       case trimmed.startsWith('sudo'):
         addLine('error', '  Usage: sudo login admin');
@@ -207,6 +212,8 @@ export default function TerminalApp({ windowId }: { windowId: string }) {
         addLine('error', `  command not found: ${trimmed.split(' ')[0]}`);
         break;
     }
+
+    addLine('system', `~ /home/demeter`);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -235,44 +242,38 @@ export default function TerminalApp({ windowId }: { windowId: string }) {
 
   return (
     <div
-      className="flex flex-col h-full bg-[#04060b] font-mono text-sm select-none relative overflow-hidden"
+      className="flex flex-col h-full bg-[#fdf2f8] font-mono text-sm select-none relative overflow-hidden"
       onClick={() => inputRef.current?.focus()}
       data-testid="terminal-app"
-      style={{
-        boxShadow: 'inset 0 0 60px rgba(74, 222, 128, 0.05)',
-      }}
     >
-      {/* CRT Scanline Overlay */}
+      {/* Pink CRT Scanline Overlay */}
       <div 
-        className="pointer-events-none absolute inset-0 z-20 opacity-[0.025]"
+        className="pointer-events-none absolute inset-0 z-20 opacity-[0.035]"
         style={{
-          backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 2px, #4ade80 2px, #4ade80 4px)',
+          backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(236,72,153,0.06) 2px, rgba(236,72,153,0.06) 4px)',
         }}
       />
 
-      {/* CRT Screen Glow Glare */}
-      <div className="pointer-events-none absolute inset-0 z-20 bg-gradient-to-tr from-transparent via-white/[0.008] to-white/[0.02]" />
+      {/* CRT Screen Glow */}
+      <div className="pointer-events-none absolute inset-0 z-20"
+        style={{
+          boxShadow: 'inset 0 0 40px rgba(236, 72, 153, 0.04)',
+        }}
+      />
 
       {/* Terminal output */}
       <ScrollArea ref={scrollRef} className="flex-1 relative z-10">
-        <div className="p-5 flex flex-col gap-1.5">
+        <div className="p-5 flex flex-col gap-1">
           {lines.map((line, i) => (
             <div
               key={i}
               className={`whitespace-pre-wrap leading-relaxed transition-all duration-150 ${
-                line.type === 'input' ? 'text-green-400 font-bold' :
-                line.type === 'error' ? 'text-rose-400 font-bold' :
-                line.type === 'success' ? 'text-emerald-400 font-bold' :
-                line.type === 'system' ? 'text-cyan-400 font-bold' :
-                'text-slate-300'
+                line.type === 'input' ? 'text-pink-600 font-bold' :
+                line.type === 'error' ? 'text-rose-500 font-bold' :
+                line.type === 'success' ? 'text-pink-500 font-bold' :
+                line.type === 'system' ? 'text-purple-600 font-extrabold' :
+                'text-slate-700 font-medium'
               }`}
-              style={{
-                textShadow: line.type === 'input' || line.type === 'success'
-                  ? '0 0 6px rgba(74, 222, 128, 0.22)'
-                  : line.type === 'system'
-                  ? '0 0 6px rgba(34, 211, 238, 0.22)'
-                  : undefined,
-              }}
             >
               {line.content || '\u00A0'}
             </div>
@@ -281,12 +282,9 @@ export default function TerminalApp({ windowId }: { windowId: string }) {
       </ScrollArea>
 
       {/* Input line */}
-      <div className="flex items-center px-5 py-4 border-t border-white/[0.05] bg-black/40 backdrop-blur-md shrink-0 relative z-10">
-        <span 
-          className="text-green-400 shrink-0 mr-3 font-bold"
-          style={{ textShadow: '0 0 4px rgba(74, 222, 128, 0.3)' }}
-        >
-          {awaitingPassword ? '🔒 password:' : `${currentUser?.toLowerCase()}@webos:~$`}
+      <div className="flex items-center px-5 py-3.5 border-t border-purple-200/40 bg-white/60 backdrop-blur-md shrink-0 relative z-10">
+        <span className="text-pink-600 shrink-0 mr-2 font-bold">
+          {awaitingPassword ? '🔒 password:' : '-> %'}
         </span>
         <input
           ref={inputRef}
@@ -294,18 +292,14 @@ export default function TerminalApp({ windowId }: { windowId: string }) {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
-          className="flex-1 bg-transparent text-gray-100 outline-none caret-green-400
-                     placeholder:text-emerald-950/60 font-mono text-sm"
-          placeholder={awaitingPassword ? '••••••••' : 'Type a command (try "neofetch")...'}
+          className="flex-1 bg-transparent text-slate-800 outline-none caret-pink-600
+                     placeholder:text-purple-400/50 font-mono text-sm font-semibold"
+          placeholder={awaitingPassword ? '••••••••' : 'Type a command...'}
           autoComplete="off"
           spellCheck={false}
           data-testid="terminal-input"
-          style={{
-            textShadow: '0 0 4px rgba(248, 250, 252, 0.2)',
-          }}
         />
       </div>
     </div>
   );
 }
-

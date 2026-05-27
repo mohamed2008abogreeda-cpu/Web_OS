@@ -13,6 +13,7 @@ import DiscordCallApp from './apps/DiscordCallApp';
 import AboutApp from './apps/AboutApp';
 import SettingsApp from './apps/SettingsApp';
 import ControlPanel from './apps/ControlPanel';
+import MusicApp from './apps/MusicApp';
 
 const COMPONENT_MAP: Record<string, React.ComponentType<{ windowId: string }>> = {
   ProjectViewer,
@@ -21,6 +22,7 @@ const COMPONENT_MAP: Record<string, React.ComponentType<{ windowId: string }>> =
   AboutApp,
   SettingsApp,
   ControlPanel,
+  MusicApp,
 };
 
 export default function WindowManager() {
