@@ -177,14 +177,15 @@ export default function Desktop() {
         <img
           src="/wallpaper.jpg"
           alt="Wallpaper"
-          className="w-full h-full object-cover object-center scale-100"
+          className="w-full h-full object-cover"
+          style={{ objectPosition: 'center center', minWidth: '100%', minHeight: '100%' }}
         />
         
         {/* Soft pastel accent overlay light */}
         <div
-          className="absolute inset-0 opacity-[0.12] mix-blend-screen pointer-events-none"
+          className="absolute inset-0 opacity-[0.08] mix-blend-overlay pointer-events-none"
           style={{
-            background: `radial-gradient(ellipse at 50% 50%, ${user?.accentColor || '#ec4899'}30 0%, transparent 80%)`,
+            background: `radial-gradient(ellipse at 50% 50%, ${user?.accentColor || '#ec4899'}40 0%, transparent 70%)`,
           }}
         />
       </div>
@@ -245,27 +246,6 @@ export default function Desktop() {
 
       {/* Desktop content area */}
       <div className="flex-1 relative z-10 p-5 flex gap-6 overflow-hidden">
-        {/* Left Unified Widget Panel (Hidden on mobile) */}
-        {!isMobile && (
-          <div className="w-80 shrink-0 bg-white/60 backdrop-blur-2xl border border-white/60 rounded-[32px] p-5 shadow-2xl flex flex-col gap-5.5 select-none h-full overflow-y-auto scrollbar-hide py-5.5 z-20">
-            {/* Profile Avatar Card */}
-            <div className="flex flex-col items-center gap-2.5 text-center mt-1">
-              <div className="w-20 h-20 rounded-full overflow-hidden shrink-0 border-2 border-white shadow-xl bg-slate-100 relative group">
-                <img src="/avatars/puppy.png" alt="Avatar" className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
-              </div>
-              <div className="flex flex-col items-center">
-                <span className="text-sm font-extrabold text-slate-800 tracking-tight">demeter</span>
-                <span className="text-[10px] font-bold text-slate-400 uppercase mt-0.5 tracking-widest">Good Afternoon!</span>
-              </div>
-            </div>
-
-            {/* Calendar widget nested */}
-            <CalendarWidget />
-
-            {/* Music Player widget nested */}
-            <MusicWidget />
-          </div>
-        )}
 
         {/* Desktop icon grid */}
         <div className={`
@@ -279,7 +259,7 @@ export default function Desktop() {
             absolute
             ${isMobile
               ? 'inset-x-0 bottom-20 grid grid-cols-4 gap-4 px-2 justify-items-center'
-              : 'top-2 left-6 flex flex-col gap-4'
+              : 'top-2 left-4 grid grid-cols-2 gap-3'
             }
           `}>
             {SYSTEM_APPS.map((app, i) => {
@@ -293,42 +273,41 @@ export default function Desktop() {
                   transition={{ delay: 0.12 + i * 0.05, type: 'spring', stiffness: 280, damping: 22 }}
                   onClick={() => openWindow(app)}
                   className={`
-                    group flex items-center rounded-2xl
+                    group flex flex-col items-center justify-center rounded-2xl
                     transition-all duration-200 border border-transparent
                     focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-400/40
                     ${isMobile
-                      ? 'flex-col gap-2 p-3 w-20 h-22 hover:bg-white/40 active:scale-90 hover:border-white/50 active:bg-white/50 hover:shadow-md'
-                      : 'gap-3.5 p-3 hover:bg-white/40 w-28 hover:border-white/50 hover:shadow-md active:scale-95'
+                      ? 'gap-2 p-3 w-20 h-22 hover:bg-white/40 active:scale-90 hover:border-white/50 active:bg-white/50 hover:shadow-md'
+                      : 'gap-2 p-3 w-22 h-22 hover:bg-white/30 hover:border-white/50 hover:shadow-lg active:scale-93 hover:backdrop-blur-sm'
                     }
                   `}
                 >
-                  {/* Icon with optimized touch hit area (minimum 44px on mobile) and inner tactile shadow */}
+                  {/* Icon */}
                   <div
                     className={`
                       icon-container shrink-0 flex items-center justify-center shadow-md relative overflow-hidden bg-white/80 border border-white
-                      ${isMobile ? 'w-13 h-13 rounded-2xl' : 'w-11.5 h-11.5 rounded-xl'}
+                      ${isMobile ? 'w-13 h-13 rounded-2xl' : 'w-12 h-12 rounded-2xl'}
                     `}
                     style={{
                       boxShadow: `0 4px 12px rgba(0,0,0,0.03), inset 0 1px 0 rgba(255,255,255,0.9)`,
                     }}
                   >
-                    {/* Glass glare effect inside icon */}
                     <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/[0.2] to-white/[0.6] pointer-events-none" />
 
                     {IconComponent && (
                       <IconComponent
-                        className={`${isMobile ? 'w-6.5 h-6.5' : 'w-5.5 h-5.5'} transition-all duration-300 group-hover:scale-108`}
+                        className={`${isMobile ? 'w-6.5 h-6.5' : 'w-5.5 h-5.5'} transition-all duration-300 group-hover:scale-110`}
                         style={{ color: user?.accentColor || '#ec4899' }}
                         strokeWidth={1.8}
                       />
                     )}
                   </div>
 
-                  {/* Label */}
+                  {/* Label — full text, no truncation */}
                   <span className={`
                     text-slate-700 group-hover:text-slate-900
-                    transition-colors font-extrabold text-center truncate w-full tracking-wide
-                    ${isMobile ? 'text-[11px] leading-tight px-1' : 'text-xs text-left'}
+                    transition-colors font-bold text-center leading-tight
+                    ${isMobile ? 'text-[11px] px-1' : 'text-[11px]'}
                   `}>
                     {app.title}
                   </span>
@@ -337,6 +316,28 @@ export default function Desktop() {
             })}
           </div>
         </div>
+
+        {/* Right Unified Widget Panel (Hidden on mobile) */}
+        {!isMobile && (
+          <div className="w-80 shrink-0 bg-white/60 backdrop-blur-2xl border border-white/60 rounded-[32px] p-5 shadow-2xl flex flex-col gap-5.5 select-none h-full overflow-y-auto scrollbar-hide py-5.5 z-20">
+            {/* Profile Avatar Card */}
+            <div className="flex flex-col items-center gap-2.5 text-center mt-1">
+              <div className="w-20 h-20 rounded-full overflow-hidden shrink-0 border-2 border-white shadow-xl bg-slate-100 relative group">
+                <img src="/avatars/puppy.png" alt="Avatar" className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
+              </div>
+              <div className="flex flex-col items-center">
+                <span className="text-sm font-extrabold text-slate-800 tracking-tight">demeter</span>
+                <span className="text-[10px] font-bold text-slate-400 uppercase mt-0.5 tracking-widest">Good Afternoon!</span>
+              </div>
+            </div>
+
+            {/* Calendar widget */}
+            <CalendarWidget />
+
+            {/* Music Player widget */}
+            <MusicWidget />
+          </div>
+        )}
 
         {/* Large digital Clock widget (Bottom right, hidden on mobile) */}
         {!isMobile && (
