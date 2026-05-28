@@ -1,43 +1,60 @@
 // ============================================================
-// API: POST /api/discord-call — Discord bridge simulation
+// API: POST /api/discord-call — Real phone notification via ntfy
 // ============================================================
 import { NextRequest, NextResponse } from 'next/server';
+
+const NTFY_TOPIC = 'webos-mohamed-calls';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { caller, timestamp } = body;
+    const { caller, timestamp, visitorName } = body;
 
-    // ── In production, this would use discord.js: ──
-    //
-    // import { Client, GatewayIntentBits } from 'discord.js';
-    //
-    // const client = new Client({ intents: [GatewayIntentBits.Guilds] });
-    // await client.login(process.env.DISCORD_BOT_TOKEN);
-    //
-    // const channel = await client.channels.fetch(process.env.DISCORD_VOICE_CHANNEL_ID);
-    // // Send a webhook notification
-    // await fetch(process.env.DISCORD_WEBHOOK_URL, {
-    //   method: 'POST',
-    //   headers: { 'Content-Type': 'application/json' },
-    //   body: JSON.stringify({
-    //     content: `📞 **Incoming Call** from portfolio visitor!\nCaller: ${caller}\nTime: ${timestamp}`,
-    //     username: 'WebOS Comms',
-    //   }),
-    // });
+    const callerName = visitorName || caller || 'Anonymous Visitor';
+    const callTime = timestamp
+      ? new Date(timestamp).toLocaleTimeString('en-US', {
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: true,
+        })
+      : new Date().toLocaleTimeString('en-US', {
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: true,
+        });
 
-    console.log(`[Discord Bridge] Call from ${caller} at ${timestamp}`);
+    // ── Send REAL notification to phone via ntfy ──
+    // Priority 5 (max/urgent) = phone rings loudly even on silent!
+    const ntfyResponse = await fetch(`https://ntfy.sh/${NTFY_TOPIC}`, {
+      method: 'POST',
+      headers: {
+        'Title': '📞 Incoming Call — WebOS Portfolio',
+        'Priority': 'urgent',
+        'Tags': 'phone,rotating_light',
+        'Actions': `view, Open Portfolio, https://webos.foggystorm.dpdns.org/, clear=true`,
+      },
+      body: `🔔 ${callerName} is trying to call you!\n⏰ Time: ${callTime}\n\nOpen your portfolio to respond.`,
+    });
+
+    const ntfyOk = ntfyResponse.ok;
+
+    console.log(
+      `[Comms Bridge] Call from ${callerName} at ${callTime} — ntfy: ${ntfyOk ? 'SENT ✅' : 'FAILED ❌'}`
+    );
 
     return NextResponse.json({
-      success: true,
-      message: 'Discord notification sent',
+      success: ntfyOk,
+      message: ntfyOk
+        ? 'Ring notification sent to phone!'
+        : 'Failed to reach notification service',
       bridge: {
-        status: 'connected',
-        channelId: 'mock-voice-channel',
-        botPing: Math.floor(Math.random() * 30) + 10,
+        status: ntfyOk ? 'connected' : 'error',
+        service: 'ntfy',
+        topic: NTFY_TOPIC,
       },
     });
-  } catch {
+  } catch (err) {
+    console.error('[Comms Bridge] Error:', err);
     return NextResponse.json(
       { success: false, message: 'Bridge connection failed' },
       { status: 500 }
