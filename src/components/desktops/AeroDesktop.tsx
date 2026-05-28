@@ -219,13 +219,13 @@ export default function AeroDesktop() {
         {/* Right Status Indicators */}
         <div className="flex items-center gap-2">
           {/* Action Pills */}
-          <button className="w-6.5 h-6.5 rounded-full hover:bg-white/40 text-slate-700 flex items-center justify-center cursor-pointer transition-colors">
+          <button className="w-6.5 h-6.5 rounded-full hover:bg-white/40 text-slate-700 flex items-center justify-center cursor-pointer transition-colors" onClick={() => toast('Edit Mode activated')}>
             <Edit3 className="w-3.5 h-3.5" />
           </button>
-          <button className="w-6.5 h-6.5 rounded-full hover:bg-white/40 text-slate-700 flex items-center justify-center cursor-pointer transition-colors">
+          <button className="w-6.5 h-6.5 rounded-full hover:bg-white/40 text-slate-700 flex items-center justify-center cursor-pointer transition-colors" onClick={() => toast('Refreshing Desktop...')}>
             <RotateCcw className="w-3.5 h-3.5" />
           </button>
-          <button className="w-6.5 h-6.5 rounded-full hover:bg-white/40 text-slate-700 flex items-center justify-center cursor-pointer transition-colors">
+          <button className="w-6.5 h-6.5 rounded-full hover:bg-white/40 text-slate-700 flex items-center justify-center cursor-pointer transition-colors" onClick={() => toast.info('System Secured')}>
             <Lock className="w-3.5 h-3.5" />
           </button>
 
@@ -233,13 +233,17 @@ export default function AeroDesktop() {
           <div className="w-px h-4 bg-slate-400/30 mx-1" />
 
           {/* Battery pill */}
-          <div className="flex items-center gap-1.5 bg-sky-200/60 border border-sky-300/40 px-2.5 py-0.5 rounded-full shadow-sm">
+          <button className="flex items-center gap-1.5 bg-sky-200/60 border border-sky-300/40 px-2.5 py-0.5 rounded-full shadow-sm hover:bg-sky-300/60 transition-colors cursor-pointer" onClick={() => toast.info('Battery Status', { description: '85% Charging' })}>
             <span className="text-[10px] text-sky-800 font-extrabold">85%</span>
             <Battery className="w-3.5 h-3.5 text-sky-700" strokeWidth={2.5} />
-          </div>
+          </button>
 
-          <Wifi className="w-4 h-4 text-slate-700" strokeWidth={2.2} />
-          <Volume2 className="w-4 h-4 text-slate-700" strokeWidth={2.2} />
+          <button className="hover:bg-white/40 p-1 rounded-md transition-colors cursor-pointer" onClick={() => toast.success('Wi-Fi Connected')}>
+            <Wifi className="w-4 h-4 text-slate-700" strokeWidth={2.2} />
+          </button>
+          <button className="hover:bg-white/40 p-1 rounded-md transition-colors cursor-pointer" onClick={() => toast('Volume Settings')}>
+            <Volume2 className="w-4 h-4 text-slate-700" strokeWidth={2.2} />
+          </button>
         </div>
       </div>
 

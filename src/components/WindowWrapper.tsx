@@ -2,7 +2,7 @@
 // ============================================================
 // WindowWrapper — Draggable/Resizable window with premium glassmorphism
 // ============================================================
-import { useRef, useCallback } from 'react';
+import { useRef, useCallback, useState } from 'react';
 import { Rnd } from 'react-rnd';
 import { motion } from 'framer-motion';
 import { useOSStore } from '@/store/useOSStore';
@@ -48,69 +48,38 @@ export default function WindowWrapper({ window: win, children }: WindowWrapperPr
         transition={{ type: 'spring', stiffness: 260, damping: 26 }}
         onClick={handleFocus}
       >
-        {/* Title bar (Touch optimized: height 14 to fit 44px min hit targets) */}
+        {/* Title bar (Touch optimized: iOS style) */}
         <div
-          className="h-14 flex items-center px-4 gap-3 shrink-0
-                     bg-white border-b border-slate-200/50 select-none"
-          style={{
-            boxShadow: isActive ? `0 1.5px 0 ${user?.accentColor}18` : undefined,
-          }}
+          className="h-[60px] flex items-center px-2 gap-2 shrink-0
+                     bg-zinc-900 border-b border-white/10 select-none pb-safe"
         >
-          {/* Icon + Title */}
-          <div className="flex items-center gap-3.5 flex-1 min-w-0 h-full">
-            {AppIcon && (
-              <AppIcon
-                className="w-5 h-5 shrink-0"
-                style={{ color: isActive ? user?.accentColor : 'var(--text-muted)' }}
-                strokeWidth={1.8}
-              />
-            )}
-            <span className="text-slate-800 text-sm font-extrabold truncate">
+          {/* iOS-style Back Button */}
+          <button
+            onClick={() => closeWindow(win.id)}
+            className="h-11 px-3 rounded-xl flex items-center gap-1
+                        text-emerald-400 hover:bg-white/5 active:bg-white/10
+                        transition-all duration-150 cursor-pointer"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+            <span className="text-[17px] font-medium">Back</span>
+          </button>
+          
+          <div className="flex-1 text-center pr-12">
+            <span className="text-white text-[17px] font-semibold truncate">
               {win.title}
             </span>
-          </div>
-
-          {/* Controls with large hit areas (at least 44x44px for Samsung Internet/Android users) */}
-          <div className="flex items-center gap-2 h-full">
-            <button
-              onClick={() => minimizeWindow(win.id)}
-              className="w-11 h-11 rounded-xl flex items-center justify-center
-                          text-slate-400 hover:bg-slate-100 hover:text-slate-700
-                          active:bg-slate-200/50 active:scale-90 transition-all duration-150 cursor-pointer"
-              title="Minimize"
-            >
-              <Minus className="w-4.5 h-4.5" strokeWidth={2.5} />
-            </button>
-            {win.isMaximized && !isMobile && (
-              <button
-                onClick={() => restoreWindow(win.id)}
-                className="w-11 h-11 rounded-xl flex items-center justify-center
-                            text-slate-400 hover:bg-slate-100 hover:text-slate-700
-                            active:bg-slate-200/50 active:scale-90 transition-all duration-150 cursor-pointer"
-                title="Restore"
-              >
-                <Maximize2 className="w-4.5 h-4.5" strokeWidth={2.5} />
-              </button>
-            )}
-            <button
-              onClick={() => closeWindow(win.id)}
-              className="w-11 h-11 rounded-xl flex items-center justify-center
-                          text-slate-400 hover:bg-rose-50 hover:text-rose-500
-                          active:bg-rose-100 active:scale-90 transition-all duration-150 cursor-pointer"
-              title="Close"
-            >
-              <X className="w-4.5 h-4.5" strokeWidth={2.5} />
-            </button>
           </div>
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-hidden bg-slate-50/50">
+        <div className="flex-1 overflow-hidden bg-zinc-950">
           {children}
         </div>
       </motion.div>
     );
   }
+
+  const [isDragging, setIsDragging] = useState(false);
 
   // Desktop: draggable/resizable with premium fluid physics-based motion
   return (
@@ -126,7 +95,11 @@ export default function WindowWrapper({ window: win, children }: WindowWrapperPr
       minHeight={260}
       style={{ zIndex: win.zIndex, display: win.isMinimized ? 'none' : 'flex', pointerEvents: 'auto' }}
       dragHandleClassName="window-drag-handle"
-      onDragStop={(_e, d) => updateWindowPosition(win.id, d.x, d.y)}
+      onDragStart={() => setIsDragging(true)}
+      onDragStop={(_e, d) => {
+        setIsDragging(false);
+        updateWindowPosition(win.id, d.x, d.y);
+      }}
       onResizeStop={(_e, _dir, ref, _delta, pos) => {
         updateWindowSize(win.id, parseInt(ref.style.width), parseInt(ref.style.height));
         updateWindowPosition(win.id, pos.x, pos.y);
@@ -137,20 +110,25 @@ export default function WindowWrapper({ window: win, children }: WindowWrapperPr
       <motion.div
         className={`
           flex flex-col w-full h-full overflow-hidden
-          transition-all duration-350 select-none
+          select-none
         `}
         initial={{ opacity: 0, scale: 0.94, y: 20 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
+        animate={{ 
+          opacity: isActive ? 1 : 0.96, 
+          scale: isDragging ? 1.02 : 1, 
+          rotate: isDragging ? 1 : 0,
+          y: 0 
+        }}
         exit={{ opacity: 0, scale: 0.94, y: 20 }}
-        transition={{ type: 'spring', stiffness: 240, damping: 25 }}
+        transition={{ type: 'spring', stiffness: 240, damping: 25, mass: 0.8 }}
         style={{
           borderRadius: 'var(--radius-window)',
           backgroundColor: isActive ? 'var(--bg-window-content)' : 'var(--bg-window-header)',
           border: `1px solid var(--border-window)`,
           boxShadow: isActive ? 'var(--shadow-window)' : '0 8px 24px rgba(0,0,0,0.03)',
-          opacity: isActive ? 1 : 0.96,
           backdropFilter: 'blur(30px)',
           WebkitBackdropFilter: 'blur(30px)',
+          transformOrigin: 'center center'
         }}
       >
         {/* Title bar */}

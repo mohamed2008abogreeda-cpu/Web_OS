@@ -4,8 +4,15 @@ import { motion } from 'framer-motion';
 import { useOSStore } from '@/store/useOSStore';
 import { SYSTEM_APPS, USERS } from '@/lib/mockData';
 import { APP_ICONS } from '@/lib/icons';
-import { Wifi, Battery, Volume2, Search, Command } from 'lucide-react';
-import MacOSTaskbar from './MacOSTaskbar';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { toast } from 'sonner';
 
 export default function MacOSDesktop() {
   const { windows, activeWindowId, currentUser, openWindow } = useOSStore();
@@ -54,25 +61,62 @@ export default function MacOSDesktop() {
           </div>
           <div className="font-bold cursor-pointer">{activeAppName}</div>
           <div className="hidden sm:flex gap-4 text-white/90">
-            <span className="cursor-pointer hover:text-white">File</span>
-            <span className="cursor-pointer hover:text-white">Edit</span>
-            <span className="cursor-pointer hover:text-white">View</span>
-            <span className="cursor-pointer hover:text-white">Go</span>
-            <span className="cursor-pointer hover:text-white">Window</span>
-            <span className="cursor-pointer hover:text-white">Help</span>
+            <span className="cursor-pointer hover:text-white" onClick={() => toast('File Menu')}>File</span>
+            <span className="cursor-pointer hover:text-white" onClick={() => toast('Edit Menu')}>Edit</span>
+            <span className="cursor-pointer hover:text-white" onClick={() => toast('View Menu')}>View</span>
+            <span className="cursor-pointer hover:text-white" onClick={() => toast('Go Menu')}>Go</span>
+            <span className="cursor-pointer hover:text-white" onClick={() => toast('Window Menu')}>Window</span>
+            <span className="cursor-pointer hover:text-white" onClick={() => toast('Help Menu')}>Help</span>
           </div>
         </div>
 
         {/* Right: System Tray */}
         <div className="flex items-center gap-3 text-white/90">
-          <Volume2 className="w-3.5 h-3.5 cursor-pointer" />
-          <Wifi className="w-3.5 h-3.5 cursor-pointer" />
-          <div className="flex items-center gap-1 cursor-pointer">
-            <span className="text-xs">100%</span>
-            <Battery className="w-4 h-4" />
-          </div>
-          <Search className="w-3.5 h-3.5 cursor-pointer" />
-          <div className="cursor-pointer">{time}</div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <div className="flex items-center gap-3 cursor-pointer hover:text-white px-2 py-0.5 rounded transition-colors hover:bg-white/10">
+                <Volume2 className="w-3.5 h-3.5" />
+                <Wifi className="w-3.5 h-3.5" />
+                <div className="flex items-center gap-1">
+                  <span className="text-xs">100%</span>
+                  <Battery className="w-4 h-4" />
+                </div>
+              </div>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" sideOffset={8} className="w-64 bg-zinc-950/90 backdrop-blur-3xl border-white/10 text-white p-2 rounded-xl shadow-2xl">
+              <DropdownMenuLabel className="px-2 pt-1 pb-2">Control Center</DropdownMenuLabel>
+              <DropdownMenuSeparator className="bg-white/10" />
+              <div className="p-2 flex flex-col gap-2">
+                <button className="flex items-center gap-3 p-2.5 rounded-lg bg-blue-500/20 text-blue-400 border border-blue-500/20 hover:bg-blue-500/30 transition-colors text-left" onClick={() => toast.success('Wi-Fi Connected', { description: 'Antigravity-Net' })}>
+                  <Wifi className="w-4 h-4" />
+                  <span className="text-sm font-medium">Wi-Fi</span>
+                </button>
+                <button className="flex items-center gap-3 p-2.5 rounded-lg bg-zinc-800 border border-white/5 hover:bg-zinc-700 transition-colors text-left" onClick={() => toast('Volume adjusted')}>
+                  <Volume2 className="w-4 h-4" />
+                  <span className="text-sm font-medium">Sound</span>
+                </button>
+                <button className="flex items-center gap-3 p-2.5 rounded-lg bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/30 transition-colors text-left" onClick={() => toast.info('Battery Status', { description: '100% Fully Charged' })}>
+                  <Battery className="w-4 h-4" />
+                  <span className="text-sm font-medium">Battery</span>
+                </button>
+              </div>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <Search className="w-3.5 h-3.5 cursor-pointer hover:text-white" onClick={() => toast('Spotlight Search (Cmd+Space)')} />
+          
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <div className="cursor-pointer hover:text-white hover:bg-white/10 px-2 py-0.5 rounded transition-colors">{time}</div>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" sideOffset={8} className="w-72 bg-zinc-950/90 backdrop-blur-3xl border-white/10 text-white p-4 rounded-xl shadow-2xl">
+              <DropdownMenuLabel className="text-xl font-light">Calendar</DropdownMenuLabel>
+              <DropdownMenuSeparator className="bg-white/10 my-2" />
+              <div className="py-2 text-sm text-zinc-400 text-center">
+                No events for today.
+              </div>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 

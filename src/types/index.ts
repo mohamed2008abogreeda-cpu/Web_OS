@@ -80,6 +80,11 @@ export interface OSState {
   // Admin
   isAdminAuthenticated: boolean;
 
+  // Spectator Mode
+  isSpectating: boolean;
+  setSpectating: (val: boolean) => void;
+  ghostCursor?: { x: number; y: number };
+
   // Actions
   setBootPhase: (phase: BootPhase) => void;
   loginUser: (name: UserName) => void;
@@ -96,4 +101,8 @@ export interface OSState {
   toggleStartMenu: () => void;
   setAdminAuthenticated: (val: boolean) => void;
   setMobile: (val: boolean) => void;
+  
+  // Internal syncing
+  syncWindows: (windows: WindowState[]) => void;
 }
+

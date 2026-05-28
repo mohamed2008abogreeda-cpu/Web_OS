@@ -6,8 +6,10 @@
  * to notify the admin via ntfy, then uses useWebRTCCall to manage the call.
  */
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { PhoneOff, Mic, MicOff, PhoneCall, Volume2, ShieldCheck, User, Loader2 } from 'lucide-react';
+import { PhoneOff, Mic, MicOff, PhoneCall, Volume2, ShieldCheck, User, Loader2, Eye } from 'lucide-react';
 import { useWebRTCCall } from '@/hooks/useWebRTCCall';
+import { useOSStore } from '@/store/useOSStore';
+import { toast } from 'sonner';
 
 // Generate a stable room ID per session
 function makeRoomId(): string {
@@ -26,6 +28,8 @@ export default function DiscordCallApp({ windowId }: { windowId: string }) {
   const [micMuted, setMicMuted] = useState(false);
   const [notified, setNotified] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  const { isSpectating, setSpectating } = useOSStore();
 
   const {
     status,
@@ -71,6 +75,13 @@ export default function DiscordCallApp({ windowId }: { windowId: string }) {
     setMicMuted(!enabled);
   };
 
+  const handleWatchSession = () => {
+    setSpectating(true);
+    toast.success('Spectator Mode Active', {
+      description: 'You are now watching the live session.',
+    });
+  };
+
   // ─── Status indicator color ────────────────────────────
   const dotColor = connected
     ? 'bg-emerald-500 animate-pulse'
@@ -89,7 +100,7 @@ export default function DiscordCallApp({ windowId }: { windowId: string }) {
   return (
     <div className="flex flex-col h-full bg-[#1e1f22] text-white">
       {/* ─── Header ──────────────────────────────────────── */}
-      <div className="flex items-center px-4 py-3 bg-[#2b2d31] border-b border-[#1e1f22] shrink-0">
+      <div className="flex items-center justify-between px-4 py-3 bg-[#2b2d31] border-b border-[#1e1f22] shrink-0">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-full bg-[#5865F2]/20 flex items-center justify-center">
             <Volume2 className="w-4 h-4 text-[#5865F2]" />
@@ -101,6 +112,21 @@ export default function DiscordCallApp({ windowId }: { windowId: string }) {
             </span>
           </div>
         </div>
+
+        {/* Watch Live Button in Header */}
+        {!isSpectating && (
+          <button
+            onClick={handleWatchSession}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20 hover:text-indigo-300 transition-colors border border-indigo-500/20 text-xs font-semibold"
+          >
+            <Eye className="w-3.5 h-3.5" /> Watch Screen
+          </button>
+        )}
+        {isSpectating && (
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-semibold">
+            <Eye className="w-3.5 h-3.5 animate-pulse" /> Spectating...
+          </div>
+        )}
       </div>
 
       {/* ─── Main ────────────────────────────────────────── */}
@@ -126,7 +152,7 @@ export default function DiscordCallApp({ windowId }: { windowId: string }) {
           </div>
 
           {/* ─── Action Area ─────────────────────────────── */}
-          <div className="mt-6 w-full flex justify-center min-h-[80px] items-center">
+          <div className="mt-6 w-full flex flex-col justify-center min-h-[80px] items-center gap-3">
             {/* State: IDLE / CONNECTING / READY → Show join button */}
             {!connected && !isWaiting && (
               <button

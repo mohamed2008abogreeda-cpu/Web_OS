@@ -140,7 +140,8 @@ export default function TerminalApp({ windowId }: { windowId: string }) {
           { type: 'output', content: '  echo <text>   Echo text back' },
           { type: 'output', content: '  uname -a      System details' },
           { type: 'output', content: '  uptime        System uptime' },
-          { type: 'output', content: '  sudo          Elevated commands' },
+          { type: 'output', content: '  sudo login    Elevated control panel access' },
+          { type: 'output', content: '  sudo watch session  Activate Spectator Mode' },
           { type: 'output', content: '' },
         ]);
         break;
@@ -203,9 +204,17 @@ export default function TerminalApp({ windowId }: { windowId: string }) {
         ]);
         setAwaitingPassword(true);
         return;
+        
+      case trimmed === 'sudo watch session':
+        useOSStore.getState().setSpectating(true);
+        addLine('success', '✓ Spectator Mode initialized. Mirroring guest state...');
+        toast.success('Spectator Mode Active', {
+          description: 'You are now watching the live session.',
+        });
+        break;
 
       case trimmed.startsWith('sudo'):
-        addLine('error', '  Usage: sudo login admin');
+        addLine('error', '  Usage: sudo login admin OR sudo watch session');
         break;
 
       default:

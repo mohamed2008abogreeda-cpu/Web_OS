@@ -32,12 +32,12 @@ export default function WindowManager() {
     <>
       {windows
         .filter((w) => w.isOpen)
-        .map((win) => {
+        .map((win, index) => {
           const Component = COMPONENT_MAP[win.component];
           if (!Component) return null;
 
           return (
-            <WindowWrapper key={win.id} window={win}>
+            <WindowWrapper key={win.id} window={{...win, zIndex: 100 + index}}>
               <ErrorBoundary windowId={win.id}>
                 <Component windowId={win.id} />
               </ErrorBoundary>
