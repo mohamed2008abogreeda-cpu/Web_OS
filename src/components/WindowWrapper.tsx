@@ -136,60 +136,62 @@ export default function WindowWrapper({ window: win, children }: WindowWrapperPr
     >
       <motion.div
         className={`
-          flex flex-col w-full h-full rounded-[24px] overflow-hidden
-          border transition-all duration-350 select-none
-          ${isActive
-            ? 'border-white/90 bg-white/88 shadow-xl'
-            : 'border-white/70 bg-white/78 shadow-lg opacity-[0.96]'
-          }
+          flex flex-col w-full h-full overflow-hidden
+          transition-all duration-350 select-none
         `}
         initial={{ opacity: 0, scale: 0.94, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.94, y: 20 }}
         transition={{ type: 'spring', stiffness: 240, damping: 25 }}
         style={{
-          boxShadow: isActive
-            ? `inset 0 1px 0 rgba(255,255,255,0.9), 0 16px 48px rgba(0,0,0,0.06), 0 0 0 1px ${user?.accentColor}25`
-            : `inset 0 1px 0 rgba(255,255,255,0.8), 0 8px 24px rgba(0,0,0,0.03)`,
+          borderRadius: 'var(--radius-window)',
+          backgroundColor: isActive ? 'var(--bg-window-content)' : 'var(--bg-window-header)',
+          border: `1px solid var(--border-window)`,
+          boxShadow: isActive ? 'var(--shadow-window)' : '0 8px 24px rgba(0,0,0,0.03)',
+          opacity: isActive ? 1 : 0.96,
+          backdropFilter: 'blur(30px)',
+          WebkitBackdropFilter: 'blur(30px)',
         }}
       >
         {/* Title bar */}
-        <div className="window-drag-handle h-12 flex items-center px-4 gap-4 shrink-0
-                        bg-white/40 border-b border-slate-200/50 select-none">
+        <div className="window-drag-handle h-10 flex items-center px-4 gap-4 shrink-0 select-none"
+             style={{ 
+               backgroundColor: 'var(--bg-window-header)',
+               borderBottom: '1px solid var(--border-window)' 
+             }}>
           
-          {/* macOS-style traffic lights with premium micro-interactions */}
-          <div className="flex items-center gap-2 h-full" onMouseDown={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()}>
-            <button
-              onMouseDown={(e) => e.stopPropagation()}
-              onClick={(e) => { e.stopPropagation(); closeWindow(win.id); }}
-              className="w-3.5 h-3.5 rounded-full bg-rose-400/80 hover:bg-rose-500
-                         transition-all duration-150 flex items-center justify-center active:scale-90 group relative cursor-pointer z-50"
-              title="Close"
-            >
-              <X className="w-2.2 h-2.2 text-rose-950 opacity-0 group-hover:opacity-100 transition-opacity" strokeWidth={3.5} />
-            </button>
-            <button
-              onMouseDown={(e) => e.stopPropagation()}
-              onClick={(e) => { e.stopPropagation(); minimizeWindow(win.id); }}
-              className="w-3.5 h-3.5 rounded-full bg-amber-400/80 hover:bg-amber-500
-                         transition-all duration-150 flex items-center justify-center active:scale-90 group relative cursor-pointer z-50"
-              title="Minimize"
-            >
-              <Minus className="w-2.2 h-2.2 text-amber-950 opacity-0 group-hover:opacity-100 transition-opacity" strokeWidth={3.5} />
-            </button>
-            <button
-              onMouseDown={(e) => e.stopPropagation()}
-              onClick={(e) => { e.stopPropagation(); maximizeWindow(win.id); }}
-              className="w-3.5 h-3.5 rounded-full bg-emerald-400/80 hover:bg-emerald-500
-                         transition-all duration-150 flex items-center justify-center active:scale-90 group relative cursor-pointer z-50"
-              title="Maximize"
-            >
-              <Maximize2 className="w-1.8 h-1.8 text-emerald-950 opacity-0 group-hover:opacity-100 transition-opacity" strokeWidth={3.5} />
-            </button>
-          </div>
+          {/* macOS-style traffic lights */}
+          {currentUser === 'Mohammed' && (
+            <div className="flex items-center gap-2 h-full" onMouseDown={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()}>
+              <button
+                onMouseDown={(e) => e.stopPropagation()}
+                onClick={(e) => { e.stopPropagation(); closeWindow(win.id); }}
+                className="w-3.5 h-3.5 rounded-full bg-rose-400 hover:bg-rose-500
+                           transition-all duration-150 flex items-center justify-center group z-50 cursor-pointer"
+              >
+                <X className="w-2 h-2 text-rose-950 opacity-0 group-hover:opacity-100 transition-opacity" strokeWidth={3} />
+              </button>
+              <button
+                onMouseDown={(e) => e.stopPropagation()}
+                onClick={(e) => { e.stopPropagation(); minimizeWindow(win.id); }}
+                className="w-3.5 h-3.5 rounded-full bg-amber-400 hover:bg-amber-500
+                           transition-all duration-150 flex items-center justify-center group z-50 cursor-pointer"
+              >
+                <Minus className="w-2 h-2 text-amber-950 opacity-0 group-hover:opacity-100 transition-opacity" strokeWidth={3} />
+              </button>
+              <button
+                onMouseDown={(e) => e.stopPropagation()}
+                onClick={(e) => { e.stopPropagation(); maximizeWindow(win.id); }}
+                className="w-3.5 h-3.5 rounded-full bg-emerald-400 hover:bg-emerald-500
+                           transition-all duration-150 flex items-center justify-center group z-50 cursor-pointer"
+              >
+                <Maximize2 className="w-1.5 h-1.5 text-emerald-950 opacity-0 group-hover:opacity-100 transition-opacity" strokeWidth={3} />
+              </button>
+            </div>
+          )}
 
           {/* App icon + Title */}
-          <div className="flex items-center gap-2.5 flex-1 min-w-0">
+          <div className={`flex items-center gap-2.5 flex-1 min-w-0 ${currentUser === 'Moamen' ? 'justify-center' : ''}`}>
             {AppIcon && (
               <AppIcon
                 className="w-4 h-4 shrink-0"
@@ -197,14 +199,52 @@ export default function WindowWrapper({ window: win, children }: WindowWrapperPr
                 strokeWidth={1.8}
               />
             )}
-            <span className="text-slate-700 text-xs font-bold truncate select-none">
+            <span className="text-slate-700 text-xs font-semibold truncate select-none">
               {win.title}
             </span>
           </div>
+
+          {/* Windows / Aero controls */}
+          {currentUser !== 'Mohammed' && (
+            <div className="flex items-center gap-1 h-full" onMouseDown={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()}>
+              <button
+                onMouseDown={(e) => e.stopPropagation()}
+                onClick={(e) => { e.stopPropagation(); minimizeWindow(win.id); }}
+                className={`flex items-center justify-center transition-colors cursor-pointer text-slate-500 z-50 ${
+                  currentUser === 'Team' ? 'w-10 h-8 hover:bg-black/10' : 'w-8 h-8 rounded-full hover:bg-black/10'
+                }`}
+                title="Minimize"
+              >
+                <Minus className="w-3.5 h-3.5" strokeWidth={2} />
+              </button>
+              <button
+                onMouseDown={(e) => e.stopPropagation()}
+                onClick={(e) => { e.stopPropagation(); maximizeWindow(win.id); }}
+                className={`flex items-center justify-center transition-colors cursor-pointer text-slate-500 z-50 ${
+                  currentUser === 'Team' ? 'w-10 h-8 hover:bg-black/10' : 'w-8 h-8 rounded-full hover:bg-black/10'
+                }`}
+                title="Maximize"
+              >
+                <Maximize2 className="w-3.5 h-3.5" strokeWidth={2} />
+              </button>
+              <button
+                onMouseDown={(e) => e.stopPropagation()}
+                onClick={(e) => { e.stopPropagation(); closeWindow(win.id); }}
+                className={`flex items-center justify-center transition-colors cursor-pointer z-50 ${
+                  currentUser === 'Team' 
+                    ? 'w-10 h-8 hover:bg-rose-500 hover:text-white text-slate-500' 
+                    : 'w-8 h-8 rounded-full bg-rose-100 text-rose-600 hover:bg-rose-500 hover:text-white'
+                }`}
+                title="Close"
+              >
+                <X className="w-3.5 h-3.5" strokeWidth={2} />
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-hidden bg-slate-50/20">
+        <div className="flex-1 overflow-hidden" style={{ backgroundColor: 'var(--bg-app)' }}>
           {children}
         </div>
       </motion.div>

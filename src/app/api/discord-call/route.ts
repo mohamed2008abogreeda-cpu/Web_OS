@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
     const ntfyResponse = await fetch(`https://ntfy.sh/${NTFY_TOPIC}`, {
       method: 'POST',
       headers: {
-        'Title': '📞 Incoming Call — WebOS Portfolio',
+        'Title': 'Incoming Call - WebOS Portfolio',
         'Priority': 'urgent',
         'Tags': 'phone,rotating_light',
         'Actions': `view, Open Portfolio, https://webos.foggystorm.dpdns.org/, clear=true`,

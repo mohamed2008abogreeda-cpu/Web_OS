@@ -1,313 +1,191 @@
-'use client';
-// ============================================================
-// DiscordCallApp — Real phone call notification via ntfy
-// ============================================================
-import { useState, useRef, useCallback, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { useOSStore } from '@/store/useOSStore';
-import { USERS } from '@/lib/mockData';
-import { Phone, PhoneOff, PhoneCall, Mic, MicOff, AlertCircle, Wifi, Info, User } from '@/lib/icons';
-import { Button } from '@/components/ui/button';
-import { toast } from 'sonner';
+/**
+ * DiscordCallApp — Visitor-side voice call (embedded in the WebOS window)
+ *
+ * This component receives a `windowId` prop from the WindowManager.
+ * It generates a stable roomId, calls the /api/call/create-room endpoint
+ * to notify the admin via ntfy, then uses useWebRTCCall to manage the call.
+ */
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { PhoneOff, Mic, MicOff, PhoneCall, Volume2, ShieldCheck, User, Loader2 } from 'lucide-react';
+import { useWebRTCCall } from '@/hooks/useWebRTCCall';
 
-type CallState = 'idle' | 'requesting' | 'ringing' | 'connected' | 'ended' | 'error';
-
-function AudioWaveVisualizer() {
-  return (
-    <div className="flex items-center gap-1 h-9 mt-4 justify-center select-none" data-testid="audio-wave">
-      {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((bar) => {
-        const delay = bar * 0.08;
-        return (
-          <motion.div
-            key={bar}
-            className="w-1 rounded-full bg-emerald-400/90 shadow-[0_0_8px_rgba(16,185,129,0.4)]"
-            animate={{
-              height: [6, 26, 4, 18, 6],
-            }}
-            transition={{
-              duration: 0.8 + (bar % 3) * 0.15,
-              repeat: Infinity,
-              ease: 'easeInOut',
-              delay: delay,
-            }}
-            style={{ minHeight: '4px' }}
-          />
-        );
-      })}
-    </div>
-  );
-}
-
-function RingingPulse() {
-  return (
-    <div className="flex items-center gap-2 mt-4 justify-center select-none">
-      {[0, 1, 2].map((i) => (
-        <motion.div
-          key={i}
-          className="w-3 h-3 rounded-full bg-amber-400"
-          animate={{ scale: [1, 1.4, 1], opacity: [0.4, 1, 0.4] }}
-          transition={{
-            duration: 1.2,
-            repeat: Infinity,
-            delay: i * 0.3,
-          }}
-        />
-      ))}
-    </div>
-  );
+// Generate a stable room ID per session
+function makeRoomId(): string {
+  if (typeof window !== 'undefined') {
+    const stored = sessionStorage.getItem('webos-call-room');
+    if (stored) return stored;
+    const id = crypto.randomUUID();
+    sessionStorage.setItem('webos-call-room', id);
+    return id;
+  }
+  return crypto.randomUUID();
 }
 
 export default function DiscordCallApp({ windowId }: { windowId: string }) {
-  const currentUser = useOSStore((s) => s.currentUser);
-  const user = currentUser ? USERS[currentUser] : null;
+  const roomId = useMemo(() => makeRoomId(), []);
+  const [micMuted, setMicMuted] = useState(false);
+  const [notified, setNotified] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  const [callState, setCallState] = useState<CallState>('idle');
-  const [duration, setDuration] = useState(0);
-  const [errorMsg, setErrorMsg] = useState('');
-  const [isMuted, setIsMuted] = useState(false);
-  const [visitorName, setVisitorName] = useState('');
-  const streamRef = useRef<MediaStream | null>(null);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const {
+    status,
+    callStatus,
+    connected,
+    isReady,
+    isWaiting,
+    remoteStream,
+    joinCall,
+    endCall,
+    toggleMic,
+  } = useWebRTCCall(roomId, false);
 
+  // Play remote audio
   useEffect(() => {
-    return () => {
-      streamRef.current?.getTracks().forEach((t) => t.stop());
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
-  }, []);
+    if (remoteStream && audioRef.current) {
+      audioRef.current.srcObject = remoteStream;
+      audioRef.current.play().catch(() => {});
+    }
+  }, [remoteStream]);
 
-  const formatDuration = (s: number) => {
-    const m = Math.floor(s / 60);
-    const sec = s % 60;
-    return `${m.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
-  };
-
-  const startCall = useCallback(async () => {
-    setCallState('requesting');
-    setErrorMsg('');
-    const toastId = toast.loading('Requesting microphone access...');
-
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      streamRef.current = stream;
-      setCallState('ringing');
-      toast.loading('📱 Ringing Mohammed\'s phone...', { id: toastId });
-
-      // Send REAL notification to phone via ntfy
+  // Notify admin when visitor joins the call
+  const handleJoinCall = async () => {
+    // First, notify admin (send push notification)
+    if (!notified) {
       try {
-        const res = await fetch('/api/discord-call', {
+        await fetch('/api/call/create-room', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            caller: currentUser,
-            visitorName: visitorName.trim() || 'Anonymous Visitor',
-            timestamp: new Date().toISOString(),
-          }),
+          body: JSON.stringify({ visitorName: 'Visitor', roomId }),
         });
-        const data = await res.json();
-        if (!data.success) {
-          throw new Error(data.message);
-        }
-      } catch (e) {
-        console.warn('Notification send failed:', e);
-      }
-
-      // Simulate waiting for answer (ringing state for 5 seconds)
-      setTimeout(() => {
-        setCallState('connected');
-        setDuration(0);
-        toast.success('📞 Connected! Mohammed has been notified.', { id: toastId });
-        timerRef.current = setInterval(() => {
-          setDuration((prev) => prev + 1);
-        }, 1000);
-      }, 5000);
-    } catch {
-      setCallState('error');
-      setErrorMsg('Microphone access denied. Please allow mic permissions.');
-      toast.error('Connection Failed', {
-        id: toastId,
-        description: 'Microphone access denied.',
-      });
-    }
-  }, [currentUser, visitorName]);
-
-  const endCall = useCallback(() => {
-    streamRef.current?.getTracks().forEach((t) => t.stop());
-    streamRef.current = null;
-    if (timerRef.current) clearInterval(timerRef.current);
-    setCallState('ended');
-    setDuration(0);
-    toast.info('Call terminated');
-  }, []);
-
-  const toggleMute = useCallback(() => {
-    if (streamRef.current) {
-      const nextMute = !isMuted;
-      streamRef.current.getAudioTracks().forEach((t) => {
-        t.enabled = !nextMute;
-      });
-      setIsMuted(nextMute);
-      if (nextMute) {
-        toast.warning('Microphone muted');
-      } else {
-        toast.success('Microphone unmuted');
+        setNotified(true);
+      } catch (err) {
+        console.warn('Failed to notify admin:', err);
       }
     }
-  }, [isMuted]);
-
-  const stateConfig = {
-    idle: { icon: Phone, color: 'var(--text-tertiary)', bg: 'var(--bg-card)', border: 'var(--border-default)' },
-    requesting: { icon: Mic, color: 'var(--text-secondary)', bg: 'var(--bg-card)', border: 'var(--border-default)' },
-    ringing: { icon: Wifi, color: '#f59e0b', bg: 'rgba(245,158,11,0.08)', border: 'rgba(245,158,11,0.25)' },
-    connected: { icon: PhoneCall, color: '#10b981', bg: 'rgba(16,185,129,0.08)', border: 'rgba(16,185,129,0.25)' },
-    ended: { icon: PhoneOff, color: 'var(--text-muted)', bg: 'var(--bg-card)', border: 'var(--border-subtle)' },
-    error: { icon: AlertCircle, color: '#ef4444', bg: 'rgba(239,68,68,0.08)', border: 'rgba(239,68,68,0.25)' },
+    // Then join the WebRTC call
+    joinCall();
   };
 
-  const config = stateConfig[callState];
-  const StateIcon = config.icon;
+  const handleToggleMic = () => {
+    const enabled = toggleMic();
+    setMicMuted(!enabled);
+  };
+
+  // ─── Status indicator color ────────────────────────────
+  const dotColor = connected
+    ? 'bg-emerald-500 animate-pulse'
+    : isWaiting
+      ? 'bg-purple-500 animate-pulse'
+      : callStatus === 'error'
+        ? 'bg-red-500'
+        : 'bg-amber-500';
+
+  const avatarBorder = connected
+    ? 'border-emerald-500/50 shadow-[0_0_20px_rgba(16,185,129,0.2)]'
+    : isWaiting
+      ? 'border-purple-500/50 shadow-[0_0_20px_rgba(168,85,247,0.2)]'
+      : 'border-white/10';
 
   return (
-    <div className="flex flex-col h-full bg-[var(--bg-base)] items-center justify-center p-6 select-none"
-      data-testid="discord-call-app">
-
-      {/* Accent ring */}
-      <div className="relative mb-6">
-        <AnimatePresence mode="wait">
-          {callState === 'ringing' && (
-            <motion.div
-              className="absolute inset-0 rounded-full"
-              style={{ border: `2px solid rgba(245,158,11,0.3)` }}
-              initial={{ scale: 1, opacity: 0.6 }}
-              animate={{ scale: 2.5, opacity: 0 }}
-              transition={{ duration: 1.5, repeat: Infinity }}
-            />
-          )}
-          {callState === 'connected' && (
-            <motion.div
-              className="absolute inset-0 rounded-full"
-              style={{ border: `2px solid rgba(16,185,129,0.2)` }}
-              initial={{ scale: 1, opacity: 0.4 }}
-              animate={{ scale: 1.8, opacity: 0 }}
-              transition={{ duration: 2, repeat: Infinity }}
-            />
-          )}
-        </AnimatePresence>
-
-        <div
-          className="w-24 h-24 rounded-full flex items-center justify-center
-                     border-2 transition-all duration-500 shadow-inner"
-          style={{
-            borderColor: config.border,
-            background: config.bg,
-            boxShadow: callState === 'connected'
-              ? '0 12px 40px rgba(16,185,129,0.2)'
-              : callState === 'ringing'
-              ? '0 12px 40px rgba(245,158,11,0.15)'
-              : undefined,
-          }}
-        >
-          <StateIcon
-            className="w-10 h-10 transition-colors duration-500"
-            style={{ color: config.color }}
-            strokeWidth={1.5}
-          />
-        </div>
-      </div>
-
-      {/* Status text */}
-      <div className="text-center mb-6 max-w-xs">
-        <h3 className="text-[var(--text-primary)] text-lg font-bold tracking-tight mb-1">
-          {callState === 'idle' && 'Call Mohammed'}
-          {callState === 'requesting' && 'Requesting Microphone...'}
-          {callState === 'ringing' && '📱 Ringing Phone...'}
-          {callState === 'connected' && 'Connected'}
-          {callState === 'ended' && 'Call Ended'}
-          {callState === 'error' && 'Connection Failed'}
-        </h3>
-        <p className="text-emerald-400 text-xs font-semibold tracking-wider font-mono mb-1">
-          {callState === 'connected' && formatDuration(duration)}
-        </p>
-        <p className="text-[var(--text-secondary)] text-xs font-medium opacity-80 leading-relaxed">
-          {callState === 'idle' && 'Ring Mohammed\'s phone directly. He will receive a real notification!'}
-          {callState === 'requesting' && 'Please authorize microphone permissions in the browser'}
-          {callState === 'ringing' && 'Mohammed\'s phone is ringing now... Please wait for answer'}
-          {callState === 'connected' && 'Call active. Mohammed has been notified on his phone.'}
-          {callState === 'ended' && 'Session terminated successfully'}
-          {callState === 'error' && errorMsg}
-        </p>
-        {callState === 'connected' && <AudioWaveVisualizer />}
-        {callState === 'ringing' && <RingingPulse />}
-      </div>
-
-      {/* Name input (only shown in idle state) */}
-      {(callState === 'idle' || callState === 'ended' || callState === 'error') && (
-        <div className="w-full max-w-xs mb-5">
-          <div className="relative">
-            <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]" strokeWidth={1.8} />
-            <input
-              type="text"
-              placeholder="Your name (optional)"
-              value={visitorName}
-              onChange={(e) => setVisitorName(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 rounded-2xl border border-[var(--border-default)]
-                         bg-[var(--bg-elevated)] text-[var(--text-primary)] text-sm font-medium
-                         placeholder:text-[var(--text-muted)] focus:outline-none focus:border-emerald-400/50
-                         focus:ring-2 focus:ring-emerald-400/20 transition-all"
-              data-testid="visitor-name-input"
-            />
+    <div className="flex flex-col h-full bg-[#1e1f22] text-white">
+      {/* ─── Header ──────────────────────────────────────── */}
+      <div className="flex items-center px-4 py-3 bg-[#2b2d31] border-b border-[#1e1f22] shrink-0">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-full bg-[#5865F2]/20 flex items-center justify-center">
+            <Volume2 className="w-4 h-4 text-[#5865F2]" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-[15px] leading-none text-gray-100">Voice Channel</h3>
+            <span className="text-[11px] font-medium text-emerald-400 mt-1 flex items-center gap-1">
+              <ShieldCheck className="w-3 h-3" /> End-to-End Encrypted
+            </span>
           </div>
         </div>
-      )}
-
-      {/* Controls */}
-      <div className="flex items-center gap-5 h-16">
-        {callState === 'idle' || callState === 'ended' || callState === 'error' ? (
-          <Button
-            onClick={startCall}
-            className="w-16 h-16 rounded-full bg-emerald-500 hover:bg-emerald-400
-                     flex items-center justify-center transition-colors hover:shadow-[0_8px_24px_rgba(16,185,129,0.4)]
-                     shadow-lg shadow-emerald-500/30 shrink-0 p-0"
-          >
-            <Phone className="w-6 h-6 text-white" strokeWidth={2.2} />
-          </Button>
-        ) : (
-          <>
-            <Button
-              onClick={toggleMute}
-              variant="neumorphic"
-              className={`w-13 h-13 rounded-full flex items-center justify-center p-0 transition-colors ${
-                isMuted
-                  ? 'bg-amber-500/15 border border-amber-500/30 text-amber-400 hover:bg-amber-500/25 hover:text-amber-300'
-                  : 'bg-[var(--bg-elevated)] border border-[var(--border-default)] text-[var(--text-secondary)]'
-              }`}
-            >
-              {isMuted ? (
-                <MicOff className="w-5 h-5" strokeWidth={1.8} />
-              ) : (
-                <Mic className="w-5 h-5" strokeWidth={1.8} />
-              )}
-            </Button>
-
-            <Button
-              onClick={endCall}
-              className="w-16 h-16 rounded-full bg-rose-600 hover:bg-rose-500
-                       flex items-center justify-center transition-colors hover:shadow-[0_8px_24px_rgba(239,68,68,0.4)]
-                       shadow-lg shadow-rose-600/30 shrink-0 p-0"
-            >
-              <PhoneOff className="w-6 h-6 text-white" strokeWidth={2.2} />
-            </Button>
-          </>
-        )}
       </div>
 
-      {/* Info footer */}
-      <div className="mt-7 px-4 py-3.5 card-surface max-w-xs flex items-start gap-3 border border-[var(--border-subtle)] bg-[var(--bg-elevated)]/30 rounded-2xl">
-        <Info className="w-4.5 h-4.5 text-[var(--text-muted)] shrink-0 mt-0.5" strokeWidth={1.6} />
-        <p className="text-[var(--text-muted)] text-[11px] leading-relaxed">
-          This will ring Mohammed&apos;s phone directly. Your microphone will be used for audio streaming.
-        </p>
+      {/* ─── Main ────────────────────────────────────────── */}
+      <div className="flex-1 flex flex-col items-center justify-center p-6 relative overflow-hidden bg-gradient-to-b from-[#1e1f22] to-[#111214]">
+        {/* Background glow */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-[#5865F2]/10 rounded-full blur-[80px] pointer-events-none" />
+
+        <div className="flex flex-col items-center gap-6 relative z-10 w-full max-w-sm">
+          {/* Status pill */}
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-[#2b2d31] rounded-full border border-white/5">
+            <span className={`w-2 h-2 rounded-full ${dotColor}`} />
+            <span className="text-xs font-medium text-gray-300">{status}</span>
+          </div>
+
+          {/* Avatar */}
+          <div className="relative mt-2">
+            <div className={`w-24 h-24 rounded-full bg-[#2b2d31] border-4 flex items-center justify-center transition-all duration-300 ${avatarBorder}`}>
+              <User className="w-10 h-10 text-gray-400" />
+            </div>
+            <div className="absolute -bottom-2 -right-2 bg-[#232428] px-2 py-1 rounded-md text-[10px] font-bold text-gray-300 border border-white/5">
+              Admin
+            </div>
+          </div>
+
+          {/* ─── Action Area ─────────────────────────────── */}
+          <div className="mt-6 w-full flex justify-center min-h-[80px] items-center">
+            {/* State: IDLE / CONNECTING / READY → Show join button */}
+            {!connected && !isWaiting && (
+              <button
+                onClick={handleJoinCall}
+                disabled={callStatus === 'connecting'}
+                className="w-full sm:w-auto px-8 py-3.5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-full font-bold flex items-center justify-center gap-3 transition-all shadow-[0_0_15px_rgba(16,185,129,0.3)] hover:shadow-[0_0_25px_rgba(16,185,129,0.5)] transform hover:-translate-y-0.5"
+              >
+                {callStatus === 'connecting' ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <PhoneCall className="w-5 h-5" />
+                )}
+                {callStatus === 'connecting' ? 'Connecting...' : 'Join Voice Channel'}
+              </button>
+            )}
+
+            {/* State: RINGING → Show spinner */}
+            {!connected && isWaiting && (
+              <div className="flex flex-col items-center gap-3">
+                <div className="w-10 h-10 border-4 border-white/10 border-t-[#5865F2] rounded-full animate-spin" />
+                <span className="text-xs text-gray-400 font-medium">Waiting for the other party...</span>
+              </div>
+            )}
+
+            {/* State: ACTIVE → Show call controls */}
+            {connected && (
+              <div className="flex items-center justify-center gap-4 p-4 bg-[#2b2d31] rounded-2xl w-full border border-white/5 shadow-xl animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <button
+                  onClick={handleToggleMic}
+                  className={`flex flex-col items-center justify-center w-16 h-16 rounded-xl transition-all duration-200 ${
+                    micMuted
+                      ? 'bg-amber-500/10 text-amber-500 hover:bg-amber-500/20'
+                      : 'bg-white/5 text-gray-300 hover:bg-white/10 hover:text-white'
+                  }`}
+                >
+                  <div className={`p-2 rounded-full ${micMuted ? 'bg-amber-500/20' : ''}`}>
+                    {micMuted ? <MicOff className="w-6 h-6" /> : <Mic className="w-6 h-6" />}
+                  </div>
+                  <span className="text-[10px] font-medium mt-1">{micMuted ? 'Unmute' : 'Mute'}</span>
+                </button>
+
+                <div className="w-px h-10 bg-white/10" />
+
+                <button
+                  onClick={endCall}
+                  className="flex flex-col items-center justify-center w-16 h-16 rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all duration-200 group"
+                >
+                  <div className="p-2 rounded-full bg-red-500/20 group-hover:bg-white/20 transition-colors">
+                    <PhoneOff className="w-6 h-6" />
+                  </div>
+                  <span className="text-[10px] font-medium mt-1">Disconnect</span>
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
+
+      <audio ref={audioRef} autoPlay />
     </div>
   );
 }

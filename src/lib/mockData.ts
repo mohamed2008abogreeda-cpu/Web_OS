@@ -29,7 +29,7 @@ export const USERS: Record<string, User> = {
     role: 'Mohammed & Moamen — Full-Stack Team',
     bio: 'A two-person powerhouse building production systems from backend to frontend. Node.js bots, Next.js apps, and Cloudflare infrastructure.',
     avatarUrl: '/avatars/team.svg',
-    wallpaper: '/wallpapers/dark-matrix.svg',
+    wallpaper: '/wallpapers/porsche_dark_wallpaper.png',
     accentColor: '#a855f7',
   },
 };
