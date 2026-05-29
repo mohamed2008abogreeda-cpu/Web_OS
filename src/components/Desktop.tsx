@@ -1,35 +1,29 @@
-'use client';
-// ============================================================
-// Desktop Environment Manager
-// Routes to different desktop layouts based on the current user
-// ============================================================
+"use client";
+import React from 'react';
 import { useOSStore } from '@/store/useOSStore';
-import { useSpectatorSync } from '@/hooks/useSpectatorSync';
 import WindowManager from './WindowManager';
 import Taskbar from './Taskbar';
-import MobileLauncher from './desktops/MobileLauncher';
 import GhostCursor from './GhostCursor';
 import { Toaster } from 'sonner';
 
-export default function Desktop() {
-  const { currentUser, isMobile } = useOSStore();
-  useSpectatorSync();
+const Desktop = () => {
+  const currentUser = useOSStore((state) => state.currentUser);
+
+  if (!currentUser) return null;
 
   return (
-    <div className="w-full h-full relative bg-os-bg text-white font-[family-name:var(--font-os)] overflow-hidden">
-      <Toaster position="bottom-right" theme="dark" />
-      <GhostCursor />
+    <main className="relative w-screen h-screen overflow-hidden text-white selection:bg-os-accent/30">
+      {/* The background is handled globally by ThemeProvider/globals.css */}
       
-      {isMobile ? (
-        <MobileLauncher />
-      ) : (
-        <Taskbar />
-      )}
-      
-      {/* Window Manager stays at the top level to persist apps during switch and to render above the desktop background */}
-      <div className="absolute inset-0 z-[100] pointer-events-none">
+      <div className="absolute inset-0 z-10">
         <WindowManager />
       </div>
-    </div>
+
+      <Taskbar />
+      <GhostCursor />
+      <Toaster theme="dark" />
+    </main>
   );
-}
+};
+
+export default Desktop;
