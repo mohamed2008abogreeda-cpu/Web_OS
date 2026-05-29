@@ -2,13 +2,13 @@
 import { useEffect } from "react";
 import { useOSStore } from "@/store/useOSStore";
 
-export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
+export default function ThemeProvider({ children }: { children: React.ReactNode }) {
   const currentUser = useOSStore((state) => state.currentUser);
 
   useEffect(() => {
     const root = document.documentElement;
-    if (currentUser?.name) {
-      root.setAttribute("data-theme", currentUser.name);
+    if (currentUser) {
+      root.setAttribute("data-theme", currentUser);
       document.body.style.background = "var(--os-wallpaper)";
     } else {
       root.removeAttribute("data-theme");
@@ -28,4 +28,4 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
       {children}
     </>
   );
-};
+}
