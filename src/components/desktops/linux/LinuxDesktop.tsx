@@ -16,7 +16,7 @@ export default function LinuxDesktop() {
 
       {/* Desktop Environment */}
       <div 
-        className="relative flex-1 w-full h-full bg-[url('/wallpapers/porsche_dark_wallpaper.png')] bg-cover bg-center bg-no-repeat mt-7"
+        className="relative flex-1 w-full h-full bg-[url('/wallpapers/linux-unix-dark.jpg')] bg-cover bg-center bg-no-repeat mt-7"
       >
         {/* Desktop Icons */}
         <div className="absolute top-0 left-0 flex flex-col gap-2 p-4 pt-4">
@@ -28,7 +28,7 @@ export default function LinuxDesktop() {
                 onClick={() => openWindow(app)}
                 className="w-20 p-2 flex flex-col items-center justify-center gap-1 hover:bg-white/10 rounded-md cursor-pointer text-white text-xs text-center drop-shadow-md border border-transparent hover:border-white/10 transition-all"
               >
-                {Icon && <Icon className="w-10 h-10 mb-1 drop-shadow-lg text-emerald-400" strokeWidth={1.5} />}
+                {Icon && <Icon className="w-10 h-10 mb-1 drop-shadow-lg text-fuchsia-400" strokeWidth={1.5} />}
                 <span className="font-medium truncate w-full shadow-black drop-shadow-md">{app.title}</span>
               </div>
             );
