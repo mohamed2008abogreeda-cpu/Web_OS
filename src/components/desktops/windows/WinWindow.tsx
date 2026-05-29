@@ -4,6 +4,7 @@ import { Rnd } from 'react-rnd';
 import { useOSStore } from '@/store/useOSStore';
 import { APP_ICONS, Minus, Maximize2, X } from '@/lib/icons';
 import type { WindowState } from '@/types';
+import AppRenderer from '@/components/apps/AppRenderer';
 
 interface WinWindowProps {
   window: WindowState;
@@ -53,7 +54,7 @@ export default function WinWindow({ window: win }: WinWindowProps) {
           </div>
         </div>
         <div className="flex-1 overflow-hidden relative border-t border-white/10">
-          <win.component />
+          <AppRenderer componentName={win.component as string} windowId={win.id} />
         </div>
       </div>
     );
@@ -100,7 +101,7 @@ export default function WinWindow({ window: win }: WinWindowProps) {
         </div>
         <div className="flex-1 overflow-hidden relative border-t border-white/5 bg-[#1e1e1e]">
           {isDragging && <div className="absolute inset-0 z-[999] bg-transparent" />}
-          <win.component />
+          <AppRenderer componentName={win.component as string} windowId={win.id} />
         </div>
       </div>
     </Rnd>

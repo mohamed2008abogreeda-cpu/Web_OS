@@ -5,6 +5,7 @@ import { useOSStore } from '@/store/useOSStore';
 import { APP_ICONS } from '@/lib/icons';
 import type { WindowState } from '@/types';
 import { Maximize2 } from 'lucide-react';
+import AppRenderer from '@/components/apps/AppRenderer';
 
 interface MacWindowProps {
   window: WindowState;
@@ -73,7 +74,7 @@ export default function MacWindow({ window: win }: MacWindowProps) {
           </div>
         </div>
         <div className="flex-1 overflow-hidden relative">
-          <win.component />
+          <AppRenderer componentName={win.component as string} windowId={win.id} />
         </div>
       </div>
     );
@@ -110,7 +111,7 @@ export default function MacWindow({ window: win }: MacWindowProps) {
         </div>
         <div className="flex-1 overflow-hidden relative">
           {isDragging && <div className="absolute inset-0 z-[999] bg-transparent" />}
-          <win.component />
+          <AppRenderer componentName={win.component as string} windowId={win.id} />
         </div>
       </div>
     </Rnd>
