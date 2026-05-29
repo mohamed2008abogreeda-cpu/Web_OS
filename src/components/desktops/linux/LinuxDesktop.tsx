@@ -1,10 +1,18 @@
 'use client';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { useOSStore } from '@/store/useOSStore';
-import { SYSTEM_APPS } from '@/lib/mockData';
 import { APP_ICONS } from '@/lib/icons';
+import type { AppDefinition } from '@/types';
 import LinuxWindow from './LinuxWindow';
 import LinuxPanel from './LinuxPanel';
+
+const LINUX_APPS: AppDefinition[] = [
+  { id: 'terminal', title: 'Root Terminal', component: 'TerminalApp', defaultWidth: 700, defaultHeight: 500 },
+  { id: 'projects', title: 'Files', component: 'ProjectViewer', defaultWidth: 800, defaultHeight: 550 },
+  { id: 'discord', title: 'Secure Link', component: 'DiscordCallApp', defaultWidth: 400, defaultHeight: 600 },
+  { id: 'about', title: 'System Info', component: 'AboutApp', defaultWidth: 600, defaultHeight: 450 },
+  { id: 'settings', title: 'Tweaks', component: 'SettingsApp', defaultWidth: 700, defaultHeight: 500 },
+];
 
 export default function LinuxDesktop() {
   const { windows, openWindow } = useOSStore();
@@ -26,7 +34,7 @@ export default function LinuxDesktop() {
       >
         {/* Desktop Icons - Single Click execution guaranteed */}
         <div className="absolute top-0 left-0 flex flex-col gap-2 p-4 pt-4">
-          {SYSTEM_APPS.map(app => {
+          {LINUX_APPS.map(app => {
             const Icon = APP_ICONS[app.id];
             return (
               <button 
@@ -42,11 +50,9 @@ export default function LinuxDesktop() {
         </div>
 
         {/* Render Open Windows STRICTLY using LinuxWindow */}
-        <AnimatePresence>
-          {windows.map(win => (
-            <LinuxWindow key={win.id} window={win} />
-          ))}
-        </AnimatePresence>
+        {windows.map(win => (
+          <LinuxWindow key={win.id} window={win} />
+        ))}
       </div>
     </motion.div>
   );

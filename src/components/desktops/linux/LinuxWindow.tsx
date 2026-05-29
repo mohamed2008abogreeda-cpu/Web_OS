@@ -34,9 +34,9 @@ export default function LinuxWindow({ window: win }: LinuxWindowProps) {
   if (win.isMaximized) {
     return (
       <motion.div 
-        initial={{ opacity: 0, scale: 0.98, y: 10 }}
+        initial={{ opacity: 0, scale: 0.96, y: 10 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.96, transition: { duration: 0.1 } }}
+        exit={{ opacity: 0, scale: 0.96 }}
         transition={{ duration: 0.15, ease: "easeOut" }}
         className="fixed inset-0 top-7 z-50 flex flex-col bg-[#121212] border border-[#333] rounded-none pointer-events-auto"
         onMouseDown={handleFocus}
@@ -84,9 +84,9 @@ export default function LinuxWindow({ window: win }: LinuxWindowProps) {
       bounds="parent"
     >
       <motion.div
-        initial={{ opacity: 0, scale: 0.98, y: 10 }}
+        initial={{ opacity: 0, scale: 0.96, y: 10 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.96, transition: { duration: 0.1 } }}
+        exit={{ opacity: 0, scale: 0.96 }}
         transition={{ duration: 0.15, ease: "easeOut" }}
         className="relative flex flex-col w-full h-full overflow-hidden bg-[#121212] shadow-2xl border border-[#333] rounded-none font-sans"
         onMouseDown={handleFocus}
