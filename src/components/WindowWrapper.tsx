@@ -111,27 +111,19 @@ export default function WindowWrapper({ window: win, children }: WindowWrapperPr
     >
       <motion.div
         className={`
-          flex flex-col w-full h-full overflow-hidden
-          select-none
+          flex flex-col w-full h-full overflow-hidden select-none
+          bg-os-bg backdrop-blur-[var(--os-blur)] border-os-border shadow-os rounded-os
         `}
-        initial={{ opacity: 0, scale: 0.94, y: 20 }}
+        initial={{ scale: 0.95, opacity: 0, y: 10 }}
         animate={{ 
-          opacity: isActive ? 1 : 0.96, 
           scale: isDragging ? 1.02 : 1, 
+          opacity: 1, 
           rotate: isDragging ? 1 : 0,
           y: 0 
         }}
-        exit={{ opacity: 0, scale: 0.94, y: 20 }}
+        exit={{ scale: 0.95, opacity: 0, y: 10 }}
         transition={{ type: 'spring', stiffness: 240, damping: 25 }}
-        style={{
-          borderRadius: 'var(--radius-window, 16px)',
-          backgroundColor: 'var(--bg-elevated)',
-          border: `1px solid var(--border-subtle)`,
-          boxShadow: isActive ? '0 24px 72px rgba(0, 0, 0, 0.4)' : '0 8px 24px rgba(0,0,0,0.2)',
-          backdropFilter: 'blur(28px)',
-          WebkitBackdropFilter: 'blur(28px)',
-          transformOrigin: 'center center'
-        }}
+        style={{ transformOrigin: 'center center' }}
       >
         {/* Title bar */}
         <div className="window-drag-handle h-12 flex items-center justify-between px-4 shrink-0 select-none"

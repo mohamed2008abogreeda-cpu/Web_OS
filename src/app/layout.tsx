@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Toaster } from "sonner";
 import "./globals.css";
+import ThemeProvider from "@/components/ThemeProvider";
 
 export const metadata: Metadata = {
   title: "WebOS Portfolio — Mohammed & Moamen",
@@ -47,7 +48,9 @@ export default function RootLayout({
       className="font-sans antialiased"
     >
       <body className="min-h-full bg-black text-white overflow-hidden">
-        {children}
+        <ThemeProvider>
+          {children}
+        </ThemeProvider>
         <Toaster theme="dark" position="top-right" closeButton richColors />
       </body>
     </html>

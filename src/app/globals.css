@@ -399,3 +399,57 @@ input[type="range"]::-webkit-slider-thumb:active {
   --accent-os: rgba(255, 255, 255, 0.9);
 }
 
+
+@layer base {
+  body {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    background: var(--os-wallpaper);
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+  }
+
+  :root[data-theme="Mohammed"] {
+    --os-wallpaper: radial-gradient(circle at 50% -20%, #27272a 0%, #09090b 100%);
+    --os-bg: rgba(24, 24, 27, 0.45);
+    --os-blur: blur(40px) saturate(200%);
+    --os-border-val: inset 0 1px 1px 0 rgba(255, 255, 255, 0.15), 0 0 0 1px rgba(255,255,255,0.05);
+    --os-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.8), var(--os-border-val);
+    --os-accent: #10b981;
+    --os-radius: 16px;
+    --os-actual-border: none;
+  }
+
+  :root[data-theme="Moamen"] {
+    --os-wallpaper: radial-gradient(circle at 50% 120%, #2e1065 0%, #020024 100%);
+    --os-bg: rgba(11, 11, 26, 0.75);
+    --os-blur: blur(16px) saturate(150%);
+    --os-border-val: 1px solid rgba(139, 92, 246, 0.6);
+    --os-shadow: 0 0 40px rgba(139, 92, 246, 0.2), inset 0 0 20px rgba(139, 92, 246, 0.15);
+    --os-accent: #8b5cf6;
+    --os-radius: 8px;
+    --os-actual-border: var(--os-border-val);
+  }
+
+  :root[data-theme="Team"] {
+    --os-wallpaper: #000000;
+    --os-bg: #09090b;
+    --os-blur: none;
+    --os-border-val: 2px solid #e11d48;
+    --os-shadow: 8px 8px 0px rgba(225, 29, 72, 0.4);
+    --os-accent: #e11d48;
+    --os-radius: 0px;
+    --os-actual-border: var(--os-border-val);
+  }
+}
+
+@layer utilities {
+  .bg-os-bg { background: var(--os-bg); }
+  .backdrop-blur-\[var\(--os-blur\)\] { backdrop-filter: var(--os-blur); }
+  .border-os-border { border: var(--os-actual-border); }
+  .shadow-os { box-shadow: var(--os-shadow); }
+  .rounded-os { border-radius: var(--os-radius); }
+  .text-os-accent { color: var(--os-accent); }
+}
+
