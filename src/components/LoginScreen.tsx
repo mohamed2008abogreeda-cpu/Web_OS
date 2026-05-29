@@ -38,7 +38,7 @@ export default function LoginScreen() {
       <div 
         className="absolute inset-0 bg-cover bg-center transition-all duration-700"
         style={{ 
-          backgroundImage: 'url(/wallpaper.jpg)',
+          backgroundImage: "url('/wallpapers/lockscreen-rain.jpg')",
           filter: selectedUser ? 'blur(20px) brightness(0.4)' : 'blur(5px) brightness(0.8)',
           transform: selectedUser ? 'scale(1.05)' : 'scale(1)'
         }}
