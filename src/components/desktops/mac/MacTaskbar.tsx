@@ -24,7 +24,7 @@ export default function MacTaskbar() {
 
   return (
     <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[100] select-none">
-      <div className="flex items-center gap-2 px-3 py-2 bg-white/20 backdrop-blur-2xl border border-white/20 rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.5)]">
+      <div className="flex items-center gap-2 px-3 py-2 bg-black/30 backdrop-blur-3xl border border-white/10 rounded-2xl shadow-[0_10px_30px_rgba(0,0,0,0.8)]">
         {SYSTEM_APPS.map(app => {
           const Icon = APP_ICONS[app.id];
           const isOpen = windows.some(w => w.appId === app.id);
@@ -36,7 +36,7 @@ export default function MacTaskbar() {
                 whileHover={{ scale: 1.2, y: -10 }}
                 whileTap={{ scale: 0.9 }}
                 onClick={() => handleAppClick(app)}
-                className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all bg-gradient-to-b from-white/20 to-white/5 shadow-inner border border-white/10 hover:border-white/30 hover:shadow-xl ${isActive ? 'bg-white/30 border-white/40' : ''}`}
+                className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all bg-gradient-to-b from-white/10 to-white/5 shadow-inner border border-white/10 hover:border-white/20 hover:shadow-xl ${isActive ? 'bg-white/20 border-white/30' : ''}`}
                 title={app.title}
               >
                 {Icon && <Icon className="w-7 h-7 text-white drop-shadow-md" />}

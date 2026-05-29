@@ -29,8 +29,8 @@ export default function MacDesktop() {
 
       {/* Desktop Environment */}
       <div 
-        className="absolute inset-0 z-0 w-full h-full bg-cover bg-center bg-no-repeat"
-        style={{ backgroundImage: 'url(/wallpaper.jpg)' }} // Or a specific macOS wallpaper
+        className="absolute inset-0 z-0 w-full h-full bg-cover bg-center bg-no-repeat bg-[#0d0e15]"
+        style={{ backgroundImage: 'url(/wallpapers/mac-mojave-dark.jpg)' }} 
       >
         {/* Render Open Windows */}
         {windows.map(win => (
