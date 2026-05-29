@@ -1,150 +1,144 @@
 'use client';
-import { motion } from 'framer-motion';
+import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useOSStore } from '@/store/useOSStore';
-import { Code2, Palette, TerminalSquare } from 'lucide-react';
 import type { UserName } from '@/types';
+import { User, ArrowRight } from 'lucide-react';
 
-const PROFILES = [
-  {
-    id: 'Mohammed' as UserName,
-    role: 'Backend Engineer',
-    icon: Code2,
-    theme: 'emerald',
-    glow: 'from-emerald-500/20 to-emerald-900/20',
-    border: 'group-hover:border-emerald-500/50',
-    text: 'group-hover:text-emerald-400',
-    shadow: 'hover:shadow-[0_0_40px_-10px_rgba(16,185,129,0.3)]'
-  },
-  {
-    id: 'Moamen' as UserName,
-    role: 'Creative Developer',
-    icon: Palette,
-    theme: 'violet',
-    glow: 'from-violet-500/20 to-violet-900/20',
-    border: 'group-hover:border-violet-500/50',
-    text: 'group-hover:text-violet-400',
-    shadow: 'hover:shadow-[0_0_40px_-10px_rgba(139,92,246,0.3)]'
-  },
-  {
-    id: 'Team' as UserName,
-    role: 'Full-Stack',
-    icon: TerminalSquare,
-    theme: 'rose',
-    glow: 'from-rose-500/20 to-rose-900/20',
-    border: 'group-hover:border-rose-500/50',
-    text: 'group-hover:text-rose-400',
-    shadow: 'hover:shadow-[0_0_40px_-10px_rgba(225,29,72,0.3)]'
-  }
-];
-
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: { staggerChildren: 0.15, delayChildren: 0.2 },
-  },
-};
-
-const cardVariants = {
-  hidden: { opacity: 0, y: 30, scale: 0.95 },
-  visible: { 
-    opacity: 1, 
-    y: 0, 
-    scale: 1,
-    transition: { type: 'spring', stiffness: 200, damping: 20 }
-  },
-};
+const OS_USERS = [
+  { id: 'Mohammed', name: 'Mohamed Mahmoud Abo Greada', env: 'Foggy (Linux)' },
+  { id: 'Moamen', name: 'Mohamed Hany', env: 'Larvil (macOS)' },
+  { id: 'Team', name: 'Team', env: 'Windows 11' },
+] as const;
 
 export default function LoginScreen() {
-  const loginUser = useOSStore((s) => s.loginUser);
+  const loginUser = useOSStore(s => s.loginUser);
+  const [time, setTime] = useState<Date | null>(null);
+  const [selectedUser, setSelectedUser] = useState<typeof OS_USERS[number] | null>(null);
+  const [password, setPassword] = useState('');
+
+  useEffect(() => {
+    setTime(new Date());
+    const interval = setInterval(() => setTime(new Date()), 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleLogin = (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (selectedUser) {
+      // In a real app we'd verify the password here.
+      // For now, any password works.
+      loginUser(selectedUser.id as UserName);
+    }
+  };
 
   return (
-    <motion.div
-      className="fixed inset-0 z-[9999] bg-zinc-950 flex flex-col items-center justify-center px-4 overflow-hidden selection:bg-white/10"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0, filter: 'blur(10px)', scale: 1.05 }}
-      transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-    >
-      {/* Ambient Deep Glow Background */}
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80vw] h-[80vw] max-w-[800px] max-h-[800px] bg-gradient-to-br from-indigo-500/10 via-purple-500/5 to-emerald-500/10 blur-[100px] rounded-full" />
-      </div>
-
-      {/* Grid Pattern Overlay */}
+    <div className="fixed inset-0 z-[9999] bg-black text-white select-none overflow-hidden font-sans">
+      {/* Blurred Wallpaper */}
       <div 
-        className="absolute inset-0 pointer-events-none opacity-[0.15]" 
+        className="absolute inset-0 bg-cover bg-center transition-all duration-700"
         style={{ 
-          backgroundImage: `linear-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.1) 1px, transparent 1px)`,
-          backgroundSize: '40px 40px' 
-        }} 
+          backgroundImage: 'url(/wallpaper.jpg)',
+          filter: selectedUser ? 'blur(20px) brightness(0.4)' : 'blur(5px) brightness(0.8)',
+          transform: selectedUser ? 'scale(1.05)' : 'scale(1)'
+        }}
       />
 
-      <motion.div
-        className="relative z-10 text-center mb-16"
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ type: 'spring', stiffness: 150, damping: 20, delay: 0.1 }}
-      >
-        <h1 className="text-4xl md:text-5xl font-black tracking-tighter text-white mb-3 drop-shadow-2xl">
-          INITIATE <span className="text-zinc-500">SEQUENCE</span>
-        </h1>
-        <p className="text-sm font-mono text-zinc-400 uppercase tracking-[0.2em]">
-          Select Neural Profile
-        </p>
-      </motion.div>
+      <div className="relative z-10 w-full h-full flex flex-col items-center justify-between py-24">
+        
+        {/* Clock & Date (Top) */}
+        <motion.div 
+          className="flex flex-col items-center drop-shadow-lg"
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8 }}
+        >
+          <div className="text-[6rem] leading-none font-light tracking-tight">
+            {time ? time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '00:00'}
+          </div>
+          <div className="text-xl font-medium mt-2">
+            {time ? time.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' }) : 'Loading...'}
+          </div>
+        </motion.div>
 
-      <motion.div
-        className="relative z-10 grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-4xl"
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
-      >
-        {PROFILES.map((profile) => {
-          const Icon = profile.icon;
-          return (
-            <motion.button
-              key={profile.id}
-              variants={cardVariants}
-              whileHover={{ y: -8, scale: 1.02 }}
-              whileTap={{ scale: 0.97 }}
-              onClick={() => loginUser(profile.id)}
-              className={`group relative flex flex-col items-center justify-center p-8 rounded-3xl bg-zinc-900/50 backdrop-blur-xl border border-white/5 transition-all duration-500 cursor-pointer overflow-hidden ${profile.shadow} ${profile.border}`}
-            >
-              {/* Card Internal Glow */}
-              <div className={`absolute inset-0 bg-gradient-to-b ${profile.glow} opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
-              
-              <div className="relative z-10 p-4 rounded-2xl bg-black/40 border border-white/5 mb-6 group-hover:scale-110 transition-transform duration-500">
-                <Icon className={`w-8 h-8 text-zinc-400 transition-colors duration-500 ${profile.text}`} strokeWidth={1.5} />
-              </div>
+        {/* Users / Login Form (Center-Bottom) */}
+        <div className="flex flex-col items-center w-full max-w-md">
+          <AnimatePresence mode="wait">
+            {!selectedUser ? (
+              /* User Selection */
+              <motion.div 
+                key="user-select"
+                className="flex flex-col gap-4 w-full"
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+              >
+                {OS_USERS.map(user => (
+                  <button
+                    key={user.id}
+                    onClick={() => setSelectedUser(user)}
+                    className="flex items-center gap-4 p-4 rounded-xl hover:bg-white/10 transition-colors group cursor-default text-left"
+                  >
+                    <div className="w-14 h-14 rounded-full bg-white/20 flex items-center justify-center shrink-0 border border-white/10 group-hover:border-white/30 transition-colors overflow-hidden">
+                      <User className="w-6 h-6 text-white/80" />
+                    </div>
+                    <div>
+                      <div className="text-xl font-semibold">{user.name}</div>
+                      <div className="text-sm text-white/60">{user.env}</div>
+                    </div>
+                  </button>
+                ))}
+              </motion.div>
+            ) : (
+              /* Password Input */
+              <motion.div
+                key="password-input"
+                className="flex flex-col items-center w-full"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+              >
+                <div className="w-24 h-24 rounded-full bg-white/20 flex items-center justify-center mb-6 shadow-xl border border-white/10">
+                  <User className="w-10 h-10 text-white" />
+                </div>
+                <h2 className="text-2xl font-semibold mb-8 text-center">{selectedUser.name}</h2>
+                
+                <form onSubmit={handleLogin} className="w-full relative">
+                  <input
+                    type="password"
+                    placeholder="PIN or Password"
+                    autoFocus
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full bg-black/40 border border-white/20 rounded-lg px-4 py-3 text-lg outline-none focus:border-white/50 focus:bg-black/60 transition-all backdrop-blur-md placeholder:text-white/30"
+                  />
+                  <button 
+                    type="submit"
+                    disabled={password.length === 0}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-md bg-white/10 hover:bg-white/20 disabled:opacity-50 disabled:hover:bg-white/10 transition-colors"
+                  >
+                    <ArrowRight className="w-5 h-5" />
+                  </button>
+                </form>
 
-              <div className="relative z-10 text-center">
-                <h3 className="text-xl font-bold text-white mb-1 tracking-tight">
-                  {profile.id}
-                </h3>
-                <p className="text-xs font-mono text-zinc-500 uppercase tracking-widest">
-                  {profile.role}
-                </p>
-              </div>
+                <button 
+                  onClick={() => { setSelectedUser(null); setPassword(''); }}
+                  className="mt-8 text-sm text-white/60 hover:text-white transition-colors"
+                >
+                  Sign-in options
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
 
-              {/* Minimalist status indicator */}
-              <div className="absolute top-4 right-4 flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-zinc-600 opacity-20 group-hover:opacity-75 transition-opacity" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-zinc-700 group-hover:bg-zinc-400 transition-colors" />
-              </div>
-            </motion.button>
-          );
-        })}
-      </motion.div>
+        {/* Bottom Network/Power Mock icons */}
+        <div className="fixed bottom-6 right-8 flex gap-6 text-white/80">
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0" /></svg>
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+        </div>
 
-      <motion.div
-        className="fixed bottom-8 text-zinc-600 font-mono text-[10px] uppercase tracking-[0.3em]"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 1 }}
-      >
-        System Version 2.0.1 // Secured Connection
-      </motion.div>
-    </motion.div>
+      </div>
+    </div>
   );
 }

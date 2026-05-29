@@ -1,29 +1,16 @@
-"use client";
-import React from 'react';
+'use client';
 import { useOSStore } from '@/store/useOSStore';
-import WindowManager from './WindowManager';
-import Taskbar from './Taskbar';
-import GhostCursor from './GhostCursor';
-import { Toaster } from 'sonner';
+import dynamic from 'next/dynamic';
 
-const Desktop = () => {
-  const currentUser = useOSStore((state) => state.currentUser);
+const LinuxEnvironment = dynamic(() => import('./desktops/linux/LinuxDesktop'), { ssr: false });
+const MacEnvironment = dynamic(() => import('./desktops/mac/MacDesktop'), { ssr: false });
+const WinEnvironment = dynamic(() => import('./desktops/windows/WinDesktop'), { ssr: false });
 
-  if (!currentUser) return null;
-
-  return (
-    <main className="relative w-screen h-screen overflow-hidden text-white selection:bg-os-accent/30">
-      {/* The background is handled globally by ThemeProvider/globals.css */}
-      
-      <div className="absolute inset-0 z-10">
-        <WindowManager />
-      </div>
-
-      <Taskbar />
-      <GhostCursor />
-      <Toaster theme="dark" />
-    </main>
-  );
-};
-
-export default Desktop;
+export default function Desktop() {
+  const currentUser = useOSStore(s => s.currentUser);
+  
+  if (currentUser === 'Mohammed') return <LinuxEnvironment />;
+  if (currentUser === 'Moamen') return <MacEnvironment />;
+  if (currentUser === 'Team') return <WinEnvironment />;
+  return null;
+}
