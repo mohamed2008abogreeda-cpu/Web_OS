@@ -3,7 +3,8 @@
 // Desktop Environment Manager
 // Routes to different desktop layouts based on the current user
 // ============================================================
-import { useOSStore, broadcastCursor } from '@/store/useOSStore';
+import { useOSStore } from '@/store/useOSStore';
+import { useSpectatorSync } from '@/hooks/useSpectatorSync';
 import WindowManager from './WindowManager';
 import AeroDesktop from './desktops/AeroDesktop';
 import MacOSDesktop from './desktops/MacOSDesktop';
@@ -13,19 +14,11 @@ import GhostCursor from './GhostCursor';
 import { Toaster } from 'sonner';
 
 export default function Desktop() {
-  const { currentUser, isSpectating, isMobile } = useOSStore();
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!isSpectating) {
-      broadcastCursor(e.clientX, e.clientY);
-    }
-  };
+  const { currentUser, isMobile } = useOSStore();
+  useSpectatorSync();
 
   return (
-    <div 
-      className="w-full h-full bg-zinc-950 text-white font-[family-name:var(--font-os)] overflow-hidden"
-      onMouseMove={handleMouseMove}
-    >
+    <div className="w-full h-full bg-zinc-950 text-white font-[family-name:var(--font-os)] overflow-hidden">
       <Toaster position="bottom-right" theme="dark" />
       <GhostCursor />
       

@@ -1,22 +1,28 @@
 'use client';
+import React from 'react';
 import { motion } from 'framer-motion';
-import { useOSStore } from '@/store/useOSStore';
 import { MousePointer2 } from 'lucide-react';
+import { useOSStore } from '@/store/useOSStore';
 
 export default function GhostCursor() {
-  const { isSpectating, ghostCursor } = useOSStore();
+  const ghostCursor = useOSStore((s) => s.ghostCursor);
+  const isSpectating = useOSStore((s) => s.isSpectating);
+  const isAdminAuthenticated = useOSStore((s) => s.isAdminAuthenticated);
 
-  if (!isSpectating || !ghostCursor) return null;
+  if (!isSpectating || !isAdminAuthenticated || !ghostCursor) {
+    return null;
+  }
 
   return (
     <motion.div
-      className="fixed z-[9999] pointer-events-none drop-shadow-xl"
+      initial={false}
       animate={{ x: ghostCursor.x, y: ghostCursor.y }}
-      transition={{ type: 'spring', damping: 25, stiffness: 300, mass: 0.5 }}
+      transition={{ type: "spring", damping: 30, stiffness: 200, mass: 0.5 }}
+      className="absolute top-0 left-0 z-[9999] pointer-events-none drop-shadow-[0_0_15px_rgba(16,185,129,0.8)]"
     >
-      <MousePointer2 className="w-6 h-6 text-emerald-400 fill-emerald-950/80 -translate-x-1/2 -translate-y-1/2" />
-      <div className="absolute top-5 left-3 bg-emerald-500/90 text-white text-[10px] font-bold px-2 py-0.5 rounded-full backdrop-blur-md border border-emerald-300/30 whitespace-nowrap">
-        Guest
+      <MousePointer2 className="w-8 h-8 text-emerald-400 fill-emerald-500/20" />
+      <div className="absolute top-8 left-6 bg-zinc-900 border border-emerald-500/50 text-emerald-400 text-[10px] font-bold px-2 py-0.5 rounded shadow-lg whitespace-nowrap">
+        Guest Session
       </div>
     </motion.div>
   );
