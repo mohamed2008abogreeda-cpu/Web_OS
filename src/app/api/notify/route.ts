@@ -5,38 +5,59 @@ import { NextResponse } from 'next/server';
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { caller, environment, roomId } = body;
+    const { caller, environment, roomId, message: customMessage, title, tags, priority } = body;
 
-    // التحقق الصارم من المدخلات المطلوبة للاتصال الآمن
-    if (!caller || !environment || !roomId) {
+    let finalMessage = "";
+    let finalTitle = "Web OS Alert";
+    let finalTags = "computer";
+    let finalPriority = "3";
+    let clickUrl = "";
+
+    const reqUrl = new URL(request.url);
+    const protocol = request.headers.get('x-forwarded-proto') || (reqUrl.protocol.includes('https') ? 'https' : 'http');
+    const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || reqUrl.host;
+    const baseDomain = process.env.NEXT_PUBLIC_APP_URL || `${protocol}://${host}`;
+
+    // التحقق الذكي ودعم كلاً من التنبيهات ثنائية القنوات (P2P WebRTC) والتنبيهات العامة للمحفظة
+    if (roomId && caller && environment) {
+      // 1. بروتوكول الاتصال المشفر الآمن (WebRTC Line)
+      finalTitle = "SECURE LINK INITIATED";
+      finalPriority = "5";
+      finalTags = "warning,skull,computer";
+      finalMessage = `Incoming Comms Request by: ${caller} from OS: ${environment}`;
+      clickUrl = `${baseDomain}/admin/comms?room=${roomId}`;
+    } else if (customMessage) {
+      // 2. تنبيهات المحفظة العامة (Teams و FaceTime وغيرها)
+      finalTitle = title || "Incoming Call Alert";
+      finalPriority = priority || "4";
+      finalTags = tags || "phone,computer";
+      finalMessage = customMessage;
+      clickUrl = `${baseDomain}/admin/comms`;
+    } else {
       return NextResponse.json(
-        { error: 'Missing required parameters: caller, environment, and roomId are required' },
+        { error: 'Invalid payload: Either (caller, environment, roomId) or (message) must be provided' },
         { status: 400 }
       );
     }
 
-    // بناء الرابط التفاعلي ديناميكياً ليعمل في البيئة المحلية والإنتاجية
-    const reqUrl = new URL(request.url);
-    const protocol = request.headers.get('x-forwarded-proto') || (reqUrl.protocol.includes('https') ? 'https' : 'http');
-    const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || reqUrl.host;
-    
-    // دعم استخدام المتغير البيئي المخصص للبيئات المحلية المتصلة بشبكات خارجية أو خدمات الأنفاق مثل ngrok/LocalIP
-    const baseDomain = process.env.NEXT_PUBLIC_APP_URL || `${protocol}://${host}`;
-    const clickUrl = `${baseDomain}/admin/comms?room=${roomId}`;
-
     const ntfyUrl = 'https://ntfy.sh/webos-mohamed-calls';
-    const message = `Incoming Comms Request by: ${caller} from OS: ${environment}`;
 
-    // إرسال الإشعار الحرج عبر ntfy.sh باستخدام fetch القياسي المتوافق مع Edge
+    // تنظيف الترويسات من أي أحرف خارج نطاق ASCII لمنع خطأ الـ ByteString في Edge Runtime
+    const headers: Record<string, string> = {
+      'Title': finalTitle.replace(/[^\x00-\x7F]/g, ""),
+      'Priority': finalPriority,
+      'Tags': finalTags,
+    };
+
+    if (clickUrl) {
+      headers['Click'] = clickUrl;
+    }
+
+    // إرسال الإشعار لـ ntfy.sh عبر Edge fetch
     const response = await fetch(ntfyUrl, {
       method: 'POST',
-      body: message,
-      headers: {
-        'Title': 'SECURE LINK INITIATED',
-        'Priority': '5',
-        'Tags': 'warning,skull,computer',
-        'Click': clickUrl,
-      },
+      body: finalMessage,
+      headers,
     });
 
     if (!response.ok) {
@@ -45,8 +66,8 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       success: true,
-      message: 'Secure link pinged successfully',
-      roomId,
+      message: 'Notification sent successfully',
+      roomId: roomId || null,
       clickUrl,
     });
   } catch (error) {
