@@ -6,12 +6,12 @@ import type { AppDefinition } from '@/types';
 import LinuxWindow from './LinuxWindow';
 import LinuxPanel from './LinuxPanel';
 
-const LINUX_APPS: AppDefinition[] = [
-  { id: 'terminal', title: 'Root Terminal', component: 'TerminalApp', defaultWidth: 700, defaultHeight: 500 },
-  { id: 'projects', title: 'Files', component: 'ProjectViewer', defaultWidth: 800, defaultHeight: 550 },
-  { id: 'discord', title: 'Secure Link', component: 'DiscordCallApp', defaultWidth: 400, defaultHeight: 600 },
-  { id: 'about', title: 'System Info', component: 'AboutApp', defaultWidth: 600, defaultHeight: 450 },
-  { id: 'settings', title: 'Tweaks', component: 'SettingsApp', defaultWidth: 700, defaultHeight: 500 },
+export const LINUX_APPS: AppDefinition[] = [
+  { id: 'app-terminal', title: 'Root Terminal', component: 'TerminalApp', defaultWidth: 700, defaultHeight: 500 },
+  { id: 'app-projects', title: 'Files', component: 'ProjectViewer', defaultWidth: 800, defaultHeight: 550 },
+  { id: 'app-comms', title: 'Secure Link', component: 'DiscordCallApp', defaultWidth: 400, defaultHeight: 600 },
+  { id: 'app-about', title: 'System Info', component: 'AboutApp', defaultWidth: 600, defaultHeight: 450 },
+  { id: 'app-settings', title: 'Tweaks', component: 'SettingsApp', defaultWidth: 700, defaultHeight: 500 },
 ];
 
 export default function LinuxDesktop() {
@@ -65,10 +65,10 @@ export default function LinuxDesktop() {
               <button 
                 key={app.id}
                 onClick={() => openWindow(app)}
-                className="w-20 p-2 flex flex-col items-center justify-center gap-1 hover:bg-white/10 rounded-md cursor-pointer text-white text-xs text-center drop-shadow-md border border-transparent hover:border-white/10 transition-all bg-transparent focus:outline-none"
+                className="group w-24 p-2 flex flex-col items-center justify-center gap-1 hover:bg-white/10 rounded-md cursor-pointer text-zinc-400 hover:text-emerald-400 text-xs text-center drop-shadow-md border border-transparent hover:border-white/10 transition-all bg-transparent focus:outline-none"
               >
-                {Icon && <Icon className="w-10 h-10 mb-1 drop-shadow-lg text-fuchsia-400" strokeWidth={1.5} />}
-                <span className="font-medium truncate w-full shadow-black drop-shadow-md">{app.title}</span>
+                {Icon && <Icon className="w-10 h-10 mb-1 drop-shadow-lg text-zinc-400 group-hover:text-emerald-400 transition-colors" strokeWidth={1.5} />}
+                <span className="font-medium whitespace-normal leading-tight shadow-black drop-shadow-md break-words">{app.title}</span>
               </button>
             );
           })}

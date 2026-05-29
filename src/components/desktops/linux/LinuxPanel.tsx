@@ -1,15 +1,9 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
-import { TerminalSquare, Wifi, Volume2, Battery, Power, Terminal, FolderGit2, Shield, Info, Settings } from 'lucide-react';
+import { TerminalSquare, Wifi, Volume2, Battery, Power } from 'lucide-react';
 import { useOSStore } from '@/store/useOSStore';
-
-const LINUX_APPS = [
-  { id: 'terminal', title: 'Root Terminal', icon: Terminal, component: 'TerminalApp', defaultWidth: 700, defaultHeight: 500 },
-  { id: 'projects', title: 'Files', icon: FolderGit2, component: 'ProjectViewer', defaultWidth: 800, defaultHeight: 550 },
-  { id: 'discord', title: 'Secure Link', icon: Shield, component: 'DiscordCallApp', defaultWidth: 400, defaultHeight: 600 },
-  { id: 'about', title: 'System Info', icon: Info, component: 'AboutApp', defaultWidth: 600, defaultHeight: 450 },
-  { id: 'settings', title: 'Tweaks', icon: Settings, component: 'SettingsApp', defaultWidth: 700, defaultHeight: 500 },
-];
+import { APP_ICONS } from '@/lib/icons';
+import { LINUX_APPS } from './LinuxDesktop';
 
 export default function LinuxPanel() {
   const [time, setTime] = useState<Date | null>(null);
@@ -53,17 +47,17 @@ export default function LinuxPanel() {
         {isMenuOpen && (
           <div className="absolute top-7 left-0 min-w-[220px] bg-[#1a1a1a] border border-[#333] shadow-2xl z-[9999] py-2 flex flex-col rounded-sm">
             {LINUX_APPS.map(app => {
-              const Icon = app.icon;
+              const Icon = APP_ICONS[app.id];
               return (
                 <button
                   key={app.id}
                   onClick={() => {
-                    openWindow(app as any);
+                    openWindow(app);
                     setIsMenuOpen(false);
                   }}
-                  className="flex items-center gap-3 px-4 py-2.5 hover:bg-[#2a2a2a] hover:text-white transition-colors text-[13px] text-zinc-300 font-medium font-sans text-left w-full cursor-default"
+                  className="group flex items-center gap-3 px-4 py-2.5 hover:bg-[#2a2a2a] text-zinc-400 hover:text-emerald-400 transition-colors text-[13px] font-medium font-sans text-left w-full cursor-default"
                 >
-                  <Icon className="w-4 h-4 shrink-0" />
+                  {Icon && <Icon className="w-4 h-4 shrink-0 text-zinc-400 group-hover:text-emerald-400 transition-colors" />}
                   <span>{app.title}</span>
                 </button>
               );
