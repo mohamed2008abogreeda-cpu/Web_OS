@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import { motion } from 'framer-motion';
 import { useOSStore } from '@/store/useOSStore';
 import MacWindow from './MacWindow';
 import MacTaskbar from './MacTaskbar';
@@ -9,7 +10,21 @@ export default function MacDesktop() {
   const [isAppleMenuOpen, setIsAppleMenuOpen] = useState(false);
 
   return (
-    <div className="w-full h-screen overflow-hidden bg-black flex flex-col font-sans select-none relative">
+    <motion.div 
+      initial={{ scaleX: 0, scaleY: 0.01, filter: 'brightness(3) contrast(2)' }}
+      animate={{ 
+        scaleX: [0, 1, 1], 
+        scaleY: [0.01, 0.01, 1], 
+        filter: ['brightness(3) contrast(2)', 'brightness(2) contrast(1.5)', 'brightness(1) contrast(1)'] 
+      }}
+      exit={{ 
+        scaleX: [1, 1, 0], 
+        scaleY: [1, 0.01, 0.01], 
+        filter: ['brightness(1) contrast(1)', 'brightness(2) contrast(1.5)', 'brightness(3) contrast(2)'] 
+      }}
+      transition={{ duration: 0.6, times: [0, 0.4, 1], ease: "easeInOut" }}
+      className="w-full h-screen overflow-hidden bg-black flex flex-col font-sans select-none relative"
+    >
       
       {/* Top Menu Bar (macOS standard) */}
       <div className="w-full h-6 bg-black/40 backdrop-blur-md flex items-center px-4 justify-between z-[100] text-xs text-white/90 border-b border-white/10 shadow-sm relative">
@@ -64,6 +79,6 @@ export default function MacDesktop() {
       {/* Bottom Floating Dock */}
       <MacTaskbar />
 
-    </div>
+    </motion.div>
   );
 }

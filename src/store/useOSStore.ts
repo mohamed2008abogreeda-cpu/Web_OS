@@ -43,17 +43,20 @@ export const useOSStore = create<OSState>((set, get) => ({
     activeWindowId: null 
   }),
 
-  logoutUser: () =>
-    set({
-      currentUser: null,
-      bootPhase: 'login',
-      windows: [],
-      activeWindowId: null,
-      isStartMenuOpen: false,
-      isAdminAuthenticated: false,
-      isSpectating: false,
-      activeSpectatorSession: null,
-    }),
+  logoutUser: () => {
+    set({ currentUser: null });
+    setTimeout(() => {
+      set({
+        bootPhase: 'login',
+        windows: [],
+        activeWindowId: null,
+        isStartMenuOpen: false,
+        isAdminAuthenticated: false,
+        isSpectating: false,
+        activeSpectatorSession: null,
+      });
+    }, 600);
+  },
 
   switchUser: () => {
     const current = get().currentUser;

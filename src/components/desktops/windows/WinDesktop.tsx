@@ -1,5 +1,6 @@
 'use client';
 import { useOSStore } from '@/store/useOSStore';
+import { motion } from 'framer-motion';
 import { SYSTEM_APPS } from '@/lib/mockData';
 import { APP_ICONS } from '@/lib/icons';
 import WinWindow from './WinWindow';
@@ -9,7 +10,21 @@ export default function WinDesktop() {
   const { windows, openWindow } = useOSStore();
 
   return (
-    <div className="w-full h-screen overflow-hidden bg-zinc-100 flex flex-col font-segoe select-none relative">
+    <motion.div 
+      initial={{ scaleX: 0, scaleY: 0.01, filter: 'brightness(3) contrast(2)' }}
+      animate={{ 
+        scaleX: [0, 1, 1], 
+        scaleY: [0.01, 0.01, 1], 
+        filter: ['brightness(3) contrast(2)', 'brightness(2) contrast(1.5)', 'brightness(1) contrast(1)'] 
+      }}
+      exit={{ 
+        scaleX: [1, 1, 0], 
+        scaleY: [1, 0.01, 0.01], 
+        filter: ['brightness(1) contrast(1)', 'brightness(2) contrast(1.5)', 'brightness(3) contrast(2)'] 
+      }}
+      transition={{ duration: 0.6, times: [0, 0.4, 1], ease: "easeInOut" }}
+      className="w-full h-screen overflow-hidden bg-zinc-100 flex flex-col font-segoe select-none relative"
+    >
       
       {/* Desktop Environment */}
       <div 
@@ -44,6 +59,6 @@ export default function WinDesktop() {
       {/* Bottom Taskbar */}
       <WinTaskbar />
 
-    </div>
+    </motion.div>
   );
 }

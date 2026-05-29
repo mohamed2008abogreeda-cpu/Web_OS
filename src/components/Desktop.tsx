@@ -14,9 +14,7 @@ export default function Desktop() {
   const [activeUser, setActiveUser] = useState(currentUser);
 
   useEffect(() => {
-    if (currentUser) {
-      setActiveUser(currentUser);
-    }
+    setActiveUser(currentUser);
   }, [currentUser]);
 
   return (
