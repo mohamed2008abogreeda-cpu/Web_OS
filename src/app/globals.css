@@ -1,21 +1,21 @@
 @import "tailwindcss";
 
 @theme {
-  --color-bg-base: #fdf2f8; /* Soft baby pink base */
-  --color-bg-elevated: rgba(255, 255, 255, 0.85); /* Frosted white glass */
-  --color-bg-surface: rgba(255, 255, 255, 0.7);
-  --color-bg-card: rgba(255, 255, 255, 0.45);
-  --color-bg-card-hover: rgba(255, 255, 255, 0.65);
-  --color-bg-card-active: rgba(255, 255, 255, 0.85);
+  --color-bg-base: #09090b;
+  --color-bg-elevated: rgba(24, 24, 27, 0.85);
+  --color-bg-surface: rgba(24, 24, 27, 0.7);
+  --color-bg-card: rgba(24, 24, 27, 0.45);
+  --color-bg-card-hover: rgba(24, 24, 27, 0.65);
+  --color-bg-card-active: rgba(24, 24, 27, 0.85);
 
-  --color-border-subtle: rgba(255, 255, 255, 0.5);
-  --color-border-default: rgba(0, 0, 0, 0.05);
-  --color-border-strong: rgba(0, 0, 0, 0.1);
+  --color-border-subtle: rgba(255, 255, 255, 0.05);
+  --color-border-default: rgba(255, 255, 255, 0.1);
+  --color-border-strong: rgba(255, 255, 255, 0.2);
 
-  --color-text-primary: #334155; /* slate-700 (crisp dark text) */
-  --color-text-secondary: #475569; /* slate-600 */
-  --color-text-tertiary: #64748b; /* slate-500 */
-  --color-text-muted: #94a3b8; /* slate-400 */
+  --color-text-primary: #f8fafc;
+  --color-text-secondary: #e2e8f0;
+  --color-text-tertiary: #cbd5e1;
+  --color-text-muted: #94a3b8;
 
   --animate-blink: blink 1s steps(1) infinite;
   --animate-fadeIn: fadeIn 320ms cubic-bezier(0.16, 1, 0.3, 1);
@@ -63,20 +63,20 @@
   --radius-full: 9999px;
 
   /* Colors — Obsidian dark slate */
-  --bg-base: #fdf2f8;
-  --bg-elevated: rgba(255, 255, 255, 0.85);
-  --bg-surface: rgba(255, 255, 255, 0.7);
-  --bg-card: rgba(255, 255, 255, 0.45);
-  --bg-card-hover: rgba(255, 255, 255, 0.65);
-  --bg-card-active: rgba(255, 255, 255, 0.85);
+  --bg-base: #09090b;
+  --bg-elevated: rgba(24, 24, 27, 0.85);
+  --bg-surface: rgba(24, 24, 27, 0.7);
+  --bg-card: rgba(24, 24, 27, 0.45);
+  --bg-card-hover: rgba(24, 24, 27, 0.65);
+  --bg-card-active: rgba(24, 24, 27, 0.85);
 
-  --border-subtle: rgba(255, 255, 255, 0.5);
-  --border-default: rgba(0, 0, 0, 0.05);
-  --border-strong: rgba(0, 0, 0, 0.1);
+  --border-subtle: rgba(255, 255, 255, 0.05);
+  --border-default: rgba(255, 255, 255, 0.1);
+  --border-strong: rgba(255, 255, 255, 0.2);
 
-  --text-primary: #334155;
-  --text-secondary: #475569;
-  --text-tertiary: #64748b;
+  --text-primary: #f8fafc;
+  --text-secondary: #e2e8f0;
+  --text-tertiary: #cbd5e1;
   --text-muted: #94a3b8;
 
   /* Accent gradients */

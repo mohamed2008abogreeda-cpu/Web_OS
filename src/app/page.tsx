@@ -12,14 +12,14 @@ import { AnimatePresence } from 'framer-motion';
 
 function SpectatorGuard() {
   const searchParams = useSearchParams();
-  const setSpectating = useOSStore(s => s.setSpectating);
+  const initSpectator = useOSStore(s => s.initSpectator);
 
   useEffect(() => {
     const spectateSession = searchParams.get('spectate');
     if (spectateSession) {
-      setSpectating(true, spectateSession);
+      initSpectator(spectateSession);
     }
-  }, [searchParams, setSpectating]);
+  }, [searchParams, initSpectator]);
 
   return null;
 }

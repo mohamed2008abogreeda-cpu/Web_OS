@@ -71,7 +71,7 @@ export interface OSState {
   // Window Manager
   windows: WindowState[];
   activeWindowId: string | null;
-  nextZIndex: number;
+
 
   // UI
   isStartMenuOpen: boolean;
@@ -82,10 +82,9 @@ export interface OSState {
 
   // Spectator Mode
   sessionId: string;
-  activeSession: string | null;
   isSpectating: boolean;
-  setSpectating: (val: boolean, session?: string) => void;
-  ghostCursor?: { x: number; y: number };
+  activeSpectatorSession: string | null;
+  ghostCursor: { x: number; y: number } | null;
 
   // Actions
   setBootPhase: (phase: BootPhase) => void;
@@ -104,7 +103,6 @@ export interface OSState {
   setAdminAuthenticated: (val: boolean) => void;
   setMobile: (val: boolean) => void;
   
-  // Internal syncing
-  syncWindows: (windows: WindowState[]) => void;
-}
+  initSpectator: (targetSessionId: string) => void;
+  syncRemoteState: (windows: WindowState[], cursor?: { x: number; y: number }) => void;
 

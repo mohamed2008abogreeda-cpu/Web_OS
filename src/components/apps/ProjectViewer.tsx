@@ -67,13 +67,13 @@ function LiveStatusWidget({ endpoint }: { endpoint: string }) {
   );
 }
 
-function ProjectCard({ project, onSelect, accentColor }: { project: Project; onSelect: (p: Project) => void; accentColor: string }) {
+function ProjectCard({ project, index, onSelect, accentColor }: { project: Project; index: number; onSelect: (p: Project) => void; accentColor: string }) {
   const ProjIcon = PROJECT_ICONS[project.id];
 
   return (
     <button
       onClick={() => onSelect(project)}
-      className="w-full flex flex-col p-5 text-left group bg-zinc-900/50 hover:bg-zinc-800/80 border border-white/5 hover:border-emerald-500/30 rounded-3xl transition-all duration-300 hover:scale-[1.02] hover:shadow-[0_8px_30px_rgb(16,185,129,0.15)] backdrop-blur-md active:scale-[0.98] select-none"
+      className={`w-full flex flex-col p-5 text-left group bg-zinc-900/50 hover:bg-zinc-800/80 border border-white/5 hover:border-emerald-500/30 rounded-3xl transition-all duration-300 hover:scale-[1.02] hover:shadow-[0_0_20px_rgba(16,185,129,0.15)] backdrop-blur-md active:scale-[0.98] select-none cursor-pointer ${index === 0 ? 'md:col-span-2 md:row-span-2' : index === 3 ? 'md:col-span-2' : ''}`}
     >
       <div className="flex w-full items-start justify-between mb-4">
         <div
@@ -245,8 +245,8 @@ export default function ProjectViewer({ windowId }: { windowId: string }) {
       </div>
       <ScrollArea className="flex-1">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-6">
-          {projects.map((project) => (
-            <ProjectCard key={project.id} project={project} onSelect={setSelectedProject} accentColor={user?.accentColor || '#6366f1'} />
+          {projects.map((project, index) => (
+            <ProjectCard key={project.id} project={project} index={index} onSelect={setSelectedProject} accentColor={user?.accentColor || '#6366f1'} />
           ))}
         </div>
       </ScrollArea>

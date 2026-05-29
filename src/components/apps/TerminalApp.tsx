@@ -127,7 +127,7 @@ export default function TerminalApp({ windowId }: { windowId: string }) {
                 setInput('');
               }
             }}
-            className="flex-1 bg-transparent outline-none border-none text-emerald-400 focus:ring-0 focus:text-emerald-300 caret-emerald-500 drop-shadow-[0_0_8px_rgba(52,211,153,0.8)]"
+            className="flex-1 bg-transparent appearance-none outline-none border-none text-emerald-400 focus:ring-0 focus:text-emerald-300 caret-emerald-500 drop-shadow-[0_0_8px_rgba(52,211,153,0.8)]"
             autoFocus
             spellCheck={false}
             autoComplete="off"
