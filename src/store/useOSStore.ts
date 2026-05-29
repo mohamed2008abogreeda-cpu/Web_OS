@@ -2,34 +2,22 @@ import { create } from 'zustand';
 import type { OSState, AppDefinition, UserName, BootPhase, WindowState } from '@/types';
 
 let windowCounter = 0;
-
-// Generate a unique session ID for this instance
 const localSessionId = Math.random().toString(36).substring(2, 15);
 
 export const useOSStore = create<OSState>((set, get) => ({
-  // ── Auth & Global ──────────────────────────────────────────────
   currentUser: null,
   bootPhase: 'booting' as BootPhase,
   isSpectating: false,
   sessionId: localSessionId,
   activeSpectatorSession: null,
   ghostCursor: null,
-
-  // ── Window Manager ────────────────────────────────────
   windows: [],
   activeWindowId: null,
-
-  // ── UI ────────────────────────────────────────────────
   isStartMenuOpen: false,
   isMobile: false,
-
-  // ── Admin ─────────────────────────────────────────────
   isAdminAuthenticated: false,
 
-  // ── Actions ───────────────────────────────────────────
-
   setBootPhase: (phase: BootPhase) => set({ bootPhase: phase }),
-
   setMobile: (val: boolean) => set({ isMobile: val }),
 
   initSpectator: (targetSessionId: string) => {
@@ -50,8 +38,9 @@ export const useOSStore = create<OSState>((set, get) => ({
 
   loginUser: (user) => set({ 
     currentUser: user,
-    windows: [], // مسح جميع النوافذ المفتوحة
-    activeWindowId: null // مسح التركيز
+    bootPhase: 'desktop',
+    windows: [],
+    activeWindowId: null 
   }),
 
   logoutUser: () =>
@@ -73,6 +62,7 @@ export const useOSStore = create<OSState>((set, get) => ({
     const next = order[(idx + 1) % order.length];
     set({
       currentUser: next,
+      bootPhase: 'desktop',
       windows: [],
       activeWindowId: null,
       isStartMenuOpen: false,
@@ -95,6 +85,10 @@ export const useOSStore = create<OSState>((set, get) => ({
     const id = `win-${app.id}-${windowCounter}`;
     const offset = (state.windows.length % 6) * 25;
     const isMob = state.isMobile;
+    
+    // SSR Safety Check
+    const screenW = typeof window !== 'undefined' ? window.innerWidth : 1024;
+    const screenH = typeof window !== 'undefined' ? window.innerHeight : 768;
 
     const newWindow: WindowState = {
       id,
@@ -107,8 +101,8 @@ export const useOSStore = create<OSState>((set, get) => ({
       zIndex: 0,
       x: isMob ? 0 : 60 + offset,
       y: isMob ? 0 : 30 + offset,
-      width: isMob ? window.innerWidth : app.defaultWidth,
-      height: isMob ? window.innerHeight - 56 : app.defaultHeight,
+      width: isMob ? screenW : app.defaultWidth,
+      height: isMob ? screenH - 56 : app.defaultHeight,
       data: app.data,
     };
 
@@ -121,75 +115,55 @@ export const useOSStore = create<OSState>((set, get) => ({
 
   closeWindow: (id: string) => {
     if (get().isSpectating) return;
-
     const newWindows = get().windows.filter((w) => w.id !== id);
     const newActive = get().activeWindowId === id ? newWindows.at(-1)?.id ?? null : get().activeWindowId;
-
     set({ windows: newWindows, activeWindowId: newActive });
   },
 
   minimizeWindow: (id: string) => {
     if (get().isSpectating) return;
-
     const newWindows = get().windows.map((w) => (w.id === id ? { ...w, isMinimized: true } : w));
-    const newActive =
-      get().activeWindowId === id
+    const newActive = get().activeWindowId === id
         ? newWindows.filter((w) => w.id !== id && !w.isMinimized).at(-1)?.id ?? null
         : get().activeWindowId;
-
     set({ windows: newWindows, activeWindowId: newActive });
   },
 
   maximizeWindow: (id: string) => {
     if (get().isSpectating) return;
-
     const newWindows = get().windows.map((w) => (w.id === id ? { ...w, isMaximized: !w.isMaximized } : w));
     set({ windows: newWindows });
   },
 
   restoreWindow: (id: string) => {
     if (get().isSpectating) return;
-
     const state = get();
     const target = state.windows.find((w) => w.id === id);
     if (!target) return;
-
     const others = state.windows.filter((w) => w.id !== id);
-    const newWindows = [...others, { ...target, isMinimized: false }];
-
-    set({ windows: newWindows, activeWindowId: id });
+    set({ windows: [...others, { ...target, isMinimized: false }], activeWindowId: id });
   },
 
   focusWindow: (id: string) => {
     if (get().isSpectating) return;
-
     const state = get();
     if (state.activeWindowId === id) return;
-
     const target = state.windows.find((w) => w.id === id);
     if (!target) return;
-
     const others = state.windows.filter((w) => w.id !== id);
-    const newWindows = [...others, target];
-
-    set({ windows: newWindows, activeWindowId: id, isStartMenuOpen: false });
+    set({ windows: [...others, target], activeWindowId: id, isStartMenuOpen: false });
   },
 
   updateWindowPosition: (id: string, x: number, y: number) => {
     if (get().isSpectating) return;
-
-    const newWindows = get().windows.map((w) => (w.id === id ? { ...w, x, y } : w));
-    set({ windows: newWindows });
+    set({ windows: get().windows.map((w) => (w.id === id ? { ...w, x, y } : w)) });
   },
 
   updateWindowSize: (id: string, width: number, height: number) => {
     if (get().isSpectating) return;
-
-    const newWindows = get().windows.map((w) => (w.id === id ? { ...w, width, height } : w));
-    set({ windows: newWindows });
+    set({ windows: get().windows.map((w) => (w.id === id ? { ...w, width, height } : w)) });
   },
 
   toggleStartMenu: () => set((state) => ({ isStartMenuOpen: !state.isStartMenuOpen })),
-
   setAdminAuthenticated: (val: boolean) => set({ isAdminAuthenticated: val }),
 }));

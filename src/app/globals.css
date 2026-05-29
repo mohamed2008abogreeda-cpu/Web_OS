@@ -1,8 +1,16 @@
 @import "tailwindcss";
 
+/* Tailwind v4 Native Theme Configuration */
+@theme {
+  --color-os-bg: var(--os-bg);
+  --color-os-accent: var(--os-accent);
+  --shadow-os: var(--os-shadow);
+  --shadow-os-border: var(--os-border);
+  --radius-os: var(--os-radius);
+}
+
 @layer base {
   body {
-    /* Sensory Engineering: Sub-pixel Antialiasing */
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
@@ -15,7 +23,6 @@
     --os-wallpaper: radial-gradient(circle at 50% -20%, #27272a 0%, #09090b 100%);
     --os-bg: rgba(24, 24, 27, 0.45);
     --os-blur: blur(40px) saturate(200%);
-    /* 3D Glass Bevel Effect */
     --os-border: inset 0 1px 1px 0 rgba(255, 255, 255, 0.15), 0 0 0 1px rgba(255, 255, 255, 0.05);
     --os-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.8);
     --os-accent: #10b981;
@@ -28,7 +35,6 @@
     --os-bg: rgba(11, 11, 26, 0.75);
     --os-blur: blur(16px) saturate(150%);
     --os-border: 0 0 0 1px rgba(139, 92, 246, 0.6);
-    /* Double Glow Effect */
     --os-shadow: 0 0 40px rgba(139, 92, 246, 0.2), inset 0 0 20px rgba(139, 92, 246, 0.15);
     --os-accent: #8b5cf6;
     --os-radius: 8px;
@@ -40,7 +46,6 @@
     --os-bg: #09090b;
     --os-blur: none;
     --os-border: 0 0 0 2px #e11d48;
-    /* Hard Brutalist Shadow */
     --os-shadow: 8px 8px 0px rgba(225, 29, 72, 0.4);
     --os-accent: #e11d48;
     --os-radius: 0px;
