@@ -5,7 +5,7 @@ import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
 initOpenNextCloudflareForDev();
 
 const nextConfig: NextConfig = {
-  allowedDevOrigins: ["webos.foggystorm.dpdns.org"],
+  allowedDevOrigins: ["webos.foggystorm.dpdns.org", "192.168.1.6"],
 };
 
 export default nextConfig;
