@@ -105,4 +105,4 @@ export interface OSState {
   
   initSpectator: (targetSessionId: string) => void;
   syncRemoteState: (windows: WindowState[], cursor?: { x: number; y: number }) => void;
-
+}

@@ -1,34 +1,59 @@
-import { NextResponse } from 'next/server';
+export const runtime = 'edge';
 
-const NTFY_TOPIC = 'web_os_admin_alerts_982b'; // A unique topic for this specific portfolio
+import { NextResponse } from 'next/server';
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { title, message, tags, priority } = body;
+    const { caller, environment, roomId } = body;
 
-    if (!message) {
-      return NextResponse.json({ error: 'Message is required' }, { status: 400 });
+    // التحقق الصارم من المدخلات المطلوبة للاتصال الآمن
+    if (!caller || !environment || !roomId) {
+      return NextResponse.json(
+        { error: 'Missing required parameters: caller, environment, and roomId are required' },
+        { status: 400 }
+      );
     }
 
-    // Send push notification to ntfy.sh
-    const response = await fetch(`https://ntfy.sh/${NTFY_TOPIC}`, {
+    // بناء الرابط التفاعلي ديناميكياً ليعمل في البيئة المحلية والإنتاجية
+    const reqUrl = new URL(request.url);
+    const protocol = request.headers.get('x-forwarded-proto') || (reqUrl.protocol.includes('https') ? 'https' : 'http');
+    const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || reqUrl.host;
+    
+    // دعم استخدام المتغير البيئي المخصص للبيئات المحلية المتصلة بشبكات خارجية أو خدمات الأنفاق مثل ngrok/LocalIP
+    const baseDomain = process.env.NEXT_PUBLIC_APP_URL || `${protocol}://${host}`;
+    const clickUrl = `${baseDomain}/admin/comms?room=${roomId}`;
+
+    const ntfyUrl = 'https://ntfy.sh/webos-mohamed-calls';
+    const message = `Incoming Comms Request by: ${caller} from OS: ${environment}`;
+
+    // إرسال الإشعار الحرج عبر ntfy.sh باستخدام fetch القياسي المتوافق مع Edge
+    const response = await fetch(ntfyUrl, {
       method: 'POST',
       body: message,
       headers: {
-        'Title': title || 'Web OS Alert',
-        'Tags': tags || 'computer', // comma-separated emojis or tags (e.g., 'warning,skull')
-        'Priority': priority || '3', // 1 (min) to 5 (max)
-      }
+        'Title': 'SECURE LINK INITIATED',
+        'Priority': '5',
+        'Tags': 'warning,skull,computer',
+        'Click': clickUrl,
+      },
     });
 
     if (!response.ok) {
-      throw new Error('Failed to send notification');
+      throw new Error(`Failed to send notification via ntfy: ${response.statusText}`);
     }
 
-    return NextResponse.json({ success: true, topic: NTFY_TOPIC });
+    return NextResponse.json({
+      success: true,
+      message: 'Secure link pinged successfully',
+      roomId,
+      clickUrl,
+    });
   } catch (error) {
-    console.error('Ntfy error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    console.error('Error in secure notify route:', error);
+    return NextResponse.json(
+      { error: 'Internal Server Error', details: error instanceof Error ? error.message : String(error) },
+      { status: 500 }
+    );
   }
 }

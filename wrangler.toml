@@ -1,0 +1,37 @@
+# ============================================================
+# Cloudflare Workers — Web OS Portfolio
+# ============================================================
+# Build:   npm run build:worker    (runs `cloudflare` adapter)
+# Preview: npm run preview:worker  (build + local wrangler dev)
+# Deploy:  npm run deploy          (build + wrangler deploy)
+# Secrets: wrangler secret put <NAME>
+# ============================================================
+
+name = "web-os-portfolio"
+main = ".worker-next/index.mjs"
+compatibility_date = "2024-12-30"
+compatibility_flags = ["nodejs_compat"]
+
+[assets]
+directory = ".worker-next/assets"
+binding = "ASSETS"
+
+# ── Non-sensitive environment variables ──────────────────
+[vars]
+NEXT_PUBLIC_PUSHER_CLUSTER = "us2"
+
+# ── D1 Database (Phase 2 — binding reserved) ────────────
+# Create with: wrangler d1 create portfolio-db
+# Then uncomment and paste the database_id:
+#
+# [[d1_databases]]
+# binding = "DB"
+# database_name = "portfolio-db"
+# database_id = "<paste-id-here>"
+
+# ── Secrets (set via CLI, never committed) ───────────────
+# wrangler secret put ADMIN_PASSWORD
+# wrangler secret put PUSHER_APP_ID
+# wrangler secret put PUSHER_SECRET
+# wrangler secret put NEXT_PUBLIC_PUSHER_KEY
+# wrangler secret put DISCORD_WEBHOOK_URL

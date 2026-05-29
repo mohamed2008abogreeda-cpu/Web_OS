@@ -332,9 +332,6 @@ export const BOOT_LOGS: string[] = [
   'Starting graphical interface...',
 ];
 
-// Admin credentials (server-side validation in production)
-export const ADMIN_PASSWORD = 'letmein2024';
-
 // Helper: get projects for a user
 export function getProjectsForUser(userId: string): Project[] {
   if (userId === 'user-team') {

@@ -1,5 +1,5 @@
 /**
- * useWebRTCCall — Peer-to-peer voice call hook (Pusher Signaling)
+ * useWebRTCCall — Peer-to-peer voice & video call hook (Pusher Signaling)
  *
  * Signaling: Pusher (pusher-js) for real-time WebRTC SDP exchange
  * Media:     Native WebRTC with STUN (Google + Twilio)
@@ -20,6 +20,7 @@ const ICE_SERVERS: RTCIceServer[] = [
 export function useWebRTCCall(roomId: string, isAdmin: boolean) {
   const [callStatus, setCallStatus] = useState<CallStatus>('idle');
   const [connected, setConnected] = useState(false);
+  const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
 
   const localStreamRef = useRef<MediaStream | null>(null);
@@ -31,8 +32,6 @@ export function useWebRTCCall(roomId: string, isAdmin: boolean) {
 
   // ─── Send signal to peer ─────────────────────────────────
   const send = useCallback((type: string, payload?: any) => {
-    // In a real app, this posts to a Next.js API route that triggers Pusher.
-    // For this architecture, we assume the API route exists at /api/call/signal
     fetch('/api/call/signal', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -46,6 +45,7 @@ export function useWebRTCCall(roomId: string, isAdmin: boolean) {
     pcRef.current = null;
     localStreamRef.current?.getTracks().forEach((t) => t.stop());
     localStreamRef.current = null;
+    setLocalStream(null);
     iceQueue.current = [];
   }, []);
 
@@ -109,8 +109,9 @@ export function useWebRTCCall(roomId: string, isAdmin: boolean) {
         } else if (msg.type === 'offer') {
           if (!localStreamRef.current) {
             try {
-              const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+              const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
               localStreamRef.current = stream;
+              setLocalStream(stream);
             } catch {
               setCallStatus('error');
               return;
@@ -162,14 +163,12 @@ export function useWebRTCCall(roomId: string, isAdmin: boolean) {
     mountedRef.current = true;
     setCallStatus('connecting');
 
-    // Initialize Pusher for Cloudflare Edge Remote Signaling
     const pusher = new Pusher(process.env.NEXT_PUBLIC_PUSHER_KEY || 'app-key', {
       cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER || 'us2',
     });
 
     const channel = pusher.subscribe(`call-${roomId}`);
     channel.bind('signal', (data: any) => {
-      // Ignore our own messages
       if (data.role === myRole) return;
       handleSignal(data);
     });
@@ -196,8 +195,9 @@ export function useWebRTCCall(roomId: string, isAdmin: boolean) {
       }
 
       setCallStatus('ringing');
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
       localStreamRef.current = stream;
+      setLocalStream(stream);
 
       const pc = makePeerConnection();
       stream.getTracks().forEach((t) => pc.addTrack(t, stream));
@@ -250,6 +250,7 @@ export function useWebRTCCall(roomId: string, isAdmin: boolean) {
     connected,
     isReady: callStatus === 'ready',
     isWaiting: callStatus === 'ringing',
+    localStream,
     remoteStream,
     joinCall,
     endCall,
