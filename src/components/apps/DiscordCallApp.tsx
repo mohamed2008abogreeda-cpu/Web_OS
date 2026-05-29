@@ -50,10 +50,15 @@ export default function DiscordCallApp({ windowId }: { windowId: string }) {
   const handleJoinCall = async () => {
     if (!notified) {
       try {
-        await fetch('/api/call/create-room', {
+        await fetch('/api/notify', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ visitorName: 'Visitor', roomId }),
+          body: JSON.stringify({
+            title: 'Incoming Call! 📞',
+            message: `A visitor (Session: ${sessionId.substring(0,6)}) is trying to call you on the portfolio!`,
+            tags: 'telephone_receiver,warning',
+            priority: 4
+          }),
         });
         setNotified(true);
       } catch (err) {

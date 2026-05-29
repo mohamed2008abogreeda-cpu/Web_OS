@@ -29,9 +29,14 @@ const itemVariants = {
   visible: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 120, damping: 14 } },
 };
 
+import { useOSStore } from '@/store/useOSStore';
+
 export default function AboutApp() {
+  const { currentUser } = useOSStore();
+  const user = currentUser;
+
   return (
-    <div className="w-full h-full overflow-y-auto p-6 md:p-8 bg-transparent text-white select-none">
+    <div className="w-full h-full overflow-y-auto p-6 md:p-8 bg-black/60 text-white select-none">
       
       <motion.div
         variants={containerVariants}
@@ -50,15 +55,20 @@ export default function AboutApp() {
             <div className="absolute -top-20 -left-20 w-40 h-40 bg-os-accent/20 blur-[50px] rounded-full pointer-events-none" />
 
             <div className="relative w-28 h-28 rounded-full bg-black/50 border-2 border-os-border flex items-center justify-center mb-4 shadow-xl overflow-hidden group">
-              <User className="w-12 h-12 text-zinc-500 group-hover:text-os-accent transition-colors duration-500" />
+              {user?.avatarUrl ? (
+                // Using an img tag for SVG avatars is standard, or just icon fallback
+                <img src={user.avatarUrl} alt={user.name} className="w-full h-full object-cover" />
+              ) : (
+                <User className="w-12 h-12 text-zinc-500 group-hover:text-os-accent transition-colors duration-500" />
+              )}
               <div className="absolute inset-0 bg-gradient-to-tr from-os-accent/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
             </div>
 
             <h2 className="text-2xl font-black tracking-tight text-white drop-shadow-md">
-              Mohammed / Moamen
+              {user?.name || 'Developer'}
             </h2>
             <p className="text-os-accent font-mono text-sm uppercase tracking-widest mt-1 mb-4 font-bold">
-              Full-Stack Developer
+              {user?.role || 'Full-Stack Developer'}
             </p>
 
             <div className="flex items-center gap-2 text-zinc-400 text-sm font-medium bg-black/30 px-4 py-2 rounded-lg border border-white/5 w-full justify-center">
@@ -92,22 +102,24 @@ export default function AboutApp() {
             </div>
             <div className="p-6 font-mono text-sm leading-relaxed text-zinc-300">
               <p className="mb-4">
-                <span className="text-os-accent font-bold">~</span> <span className="text-blue-400">./execute_persona</span> <span className="text-emerald-400">--mode</span> dual
+                <span className="text-os-accent font-bold">~</span> <span className="text-blue-400">./execute_persona</span> <span className="text-emerald-400">--user</span> {user?.name.toLowerCase().replace(' ', '_') || 'guest'}
               </p>
               <p className="mb-4">
                 <span className="text-zinc-500"># SYSTEM ARCHITECTURE & CREATIVE DESIGN IN HARMONY</span><br />
-                Operating with a unique dual persona approach to engineering.
+                {user?.bio || 'Operating with a unique persona approach to engineering.'}
               </p>
-              <ul className="space-y-3 pl-4 border-l-2 border-white/10 ml-2">
-                <li>
-                  <span className="text-emerald-400 font-bold">{"[MOHAMMED]"}</span> - The Backend Architect.<br/>
-                  <span className="text-zinc-400">Specializing in Node.js, Systems Engineering, Linux Administration, and crafting robust API infrastructures.</span>
-                </li>
-                <li>
-                  <span className="text-violet-400 font-bold">{"[MOAMEN]"}</span> - The Creative Visionary.<br/>
-                  <span className="text-zinc-400">Focused on UI/UX, Framer Motion physics, Glassmorphism aesthetics, and bringing interfaces to life.</span>
-                </li>
-              </ul>
+              {user?.id === 'user-team' && (
+                <ul className="space-y-3 pl-4 border-l-2 border-white/10 ml-2 mt-4">
+                  <li>
+                    <span className="text-emerald-400 font-bold">{"[MOHAMMED]"}</span> - The Backend Architect.<br/>
+                    <span className="text-zinc-400">Specializing in Node.js, Systems Engineering, Linux Administration, and crafting robust API infrastructures.</span>
+                  </li>
+                  <li>
+                    <span className="text-violet-400 font-bold">{"[MOAMEN]"}</span> - The Creative Visionary.<br/>
+                    <span className="text-zinc-400">Focused on UI/UX, Framer Motion physics, Glassmorphism aesthetics, and bringing interfaces to life.</span>
+                  </li>
+                </ul>
+              )}
               <p className="mt-6 animate-pulse text-os-accent">_</p>
             </div>
           </div>
