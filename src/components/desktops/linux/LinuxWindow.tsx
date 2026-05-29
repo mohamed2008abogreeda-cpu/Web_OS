@@ -2,7 +2,7 @@
 import { useRef, useState, useCallback } from 'react';
 import { Rnd } from 'react-rnd';
 import { useOSStore } from '@/store/useOSStore';
-import { APP_ICONS, Minus, Square, X } from '@/lib/icons';
+import { APP_ICONS, Minus, Maximize2, X } from '@/lib/icons';
 import type { WindowState } from '@/types';
 
 interface LinuxWindowProps {
@@ -45,7 +45,7 @@ export default function LinuxWindow({ window: win }: LinuxWindowProps) {
               <Minus className="w-3 h-3" />
             </button>
             <button onClick={() => maximizeWindow(win.id)} className="hover:bg-white/10 w-8 h-full flex items-center justify-center transition-colors text-zinc-400">
-              <Square className="w-3 h-3" />
+              <Maximize2 className="w-3 h-3" />
             </button>
             <button onClick={() => closeWindow(win.id)} className="hover:bg-red-600 hover:text-white w-8 h-full flex items-center justify-center transition-colors text-zinc-400">
               <X className="w-3 h-3" />
@@ -91,7 +91,7 @@ export default function LinuxWindow({ window: win }: LinuxWindowProps) {
               <Minus className="w-3 h-3" />
             </button>
             <button onClick={() => maximizeWindow(win.id)} className="hover:bg-white/10 w-8 h-full flex items-center justify-center transition-colors text-zinc-400">
-              <Square className="w-3 h-3" />
+              <Maximize2 className="w-3 h-3" />
             </button>
             <button onClick={() => closeWindow(win.id)} className="hover:bg-red-600 hover:text-white w-8 h-full flex items-center justify-center transition-colors text-zinc-400">
               <X className="w-3 h-3" />
