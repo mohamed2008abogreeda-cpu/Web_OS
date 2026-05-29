@@ -33,27 +33,27 @@ export default function WinWindow({ window: win }: WinWindowProps) {
   if (win.isMaximized) {
     return (
       <div 
-        className="fixed inset-0 z-50 flex flex-col bg-zinc-900/90 backdrop-blur-xl pointer-events-auto"
+        className="fixed inset-0 z-50 flex flex-col bg-white/90 backdrop-blur-xl pointer-events-auto"
         onMouseDown={handleFocus}
       >
         <div className="h-9 flex items-center justify-between select-none bg-transparent">
           <div className="flex items-center gap-3 pl-4">
-            {AppIcon && <AppIcon className="w-4 h-4 text-blue-400" />}
-            <span className="text-xs text-white/90 font-segoe">{win.title}</span>
+            {AppIcon && <AppIcon className="w-4 h-4 text-pink-500" />}
+            <span className="text-xs text-zinc-800 font-segoe">{win.title}</span>
           </div>
           <div className="flex h-full items-center">
-            <button onClick={() => minimizeWindow(win.id)} className="hover:bg-white/10 w-11 h-full flex items-center justify-center transition-colors text-white/80">
+            <button onClick={() => minimizeWindow(win.id)} className="hover:bg-black/5 w-11 h-full flex items-center justify-center transition-colors text-zinc-600">
               <Minus className="w-4 h-4" />
             </button>
-            <button onClick={() => maximizeWindow(win.id)} className="hover:bg-white/10 w-11 h-full flex items-center justify-center transition-colors text-white/80">
+            <button onClick={() => maximizeWindow(win.id)} className="hover:bg-black/5 w-11 h-full flex items-center justify-center transition-colors text-zinc-600">
               <Maximize2 className="w-3.5 h-3.5" />
             </button>
-            <button onClick={() => closeWindow(win.id)} className="hover:bg-red-600 hover:text-white w-11 h-full flex items-center justify-center transition-colors text-white/80">
+            <button onClick={() => closeWindow(win.id)} className="hover:bg-red-500 hover:text-white w-11 h-full flex items-center justify-center transition-colors text-zinc-600">
               <X className="w-4 h-4" />
             </button>
           </div>
         </div>
-        <div className="flex-1 overflow-hidden relative border-t border-white/10">
+        <div className="flex-1 overflow-hidden relative border-t border-black/5">
           <AppRenderer componentName={win.component as string} windowId={win.id} />
         </div>
       </div>
@@ -79,27 +79,27 @@ export default function WinWindow({ window: win }: WinWindowProps) {
       bounds="parent"
     >
       <div
-        className={`relative flex flex-col w-full h-full overflow-hidden bg-zinc-900/80 backdrop-blur-2xl shadow-2xl border border-white/10 rounded-lg font-sans transition-shadow ${isActive ? 'shadow-[0_0_20px_rgba(0,0,0,0.5)] border-white/20' : ''}`}
+        className={`relative flex flex-col w-full h-full overflow-hidden bg-white/85 backdrop-blur-2xl shadow-xl border border-black/10 rounded-lg font-sans transition-shadow ${isActive ? 'shadow-[0_0_30px_rgba(0,0,0,0.15)] border-black/20' : ''}`}
         onMouseDown={handleFocus}
       >
         <div className="win-drag-handle h-9 flex items-center justify-between select-none bg-transparent">
           <div className="flex items-center gap-3 pl-4">
-            {AppIcon && <AppIcon className="w-4 h-4 text-blue-400" />}
-            <span className="text-xs text-white/90 font-segoe">{win.title}</span>
+            {AppIcon && <AppIcon className="w-4 h-4 text-pink-500" />}
+            <span className="text-xs text-zinc-800 font-segoe">{win.title}</span>
           </div>
           <div className="flex h-full items-center" onMouseDown={e => e.stopPropagation()}>
-            <button onClick={() => minimizeWindow(win.id)} className="hover:bg-white/10 w-11 h-full flex items-center justify-center transition-colors text-white/80">
+            <button onClick={() => minimizeWindow(win.id)} className="hover:bg-black/5 w-11 h-full flex items-center justify-center transition-colors text-zinc-600">
               <Minus className="w-4 h-4" />
             </button>
-            <button onClick={() => maximizeWindow(win.id)} className="hover:bg-white/10 w-11 h-full flex items-center justify-center transition-colors text-white/80">
+            <button onClick={() => maximizeWindow(win.id)} className="hover:bg-black/5 w-11 h-full flex items-center justify-center transition-colors text-zinc-600">
               <Maximize2 className="w-3.5 h-3.5" />
             </button>
-            <button onClick={() => closeWindow(win.id)} className="hover:bg-red-600 hover:text-white w-11 h-full flex items-center justify-center transition-colors text-white/80">
+            <button onClick={() => closeWindow(win.id)} className="hover:bg-red-500 hover:text-white w-11 h-full flex items-center justify-center transition-colors text-zinc-600">
               <X className="w-4 h-4" />
             </button>
           </div>
         </div>
-        <div className="flex-1 overflow-hidden relative border-t border-white/5 bg-[#1e1e1e]">
+        <div className="flex-1 overflow-hidden relative border-t border-black/5 bg-[#fafafa]">
           {isDragging && <div className="absolute inset-0 z-[999] bg-transparent" />}
           <AppRenderer componentName={win.component as string} windowId={win.id} />
         </div>

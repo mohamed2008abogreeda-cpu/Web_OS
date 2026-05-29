@@ -9,12 +9,12 @@ export default function WinDesktop() {
   const { windows, openWindow } = useOSStore();
 
   return (
-    <div className="w-full h-screen overflow-hidden bg-black flex flex-col font-segoe select-none relative">
+    <div className="w-full h-screen overflow-hidden bg-zinc-100 flex flex-col font-segoe select-none relative">
       
       {/* Desktop Environment */}
       <div 
-        className="absolute inset-0 z-0 w-full h-full bg-cover bg-center bg-no-repeat"
-        style={{ backgroundImage: 'url(/wallpaper.jpg)' }} // Standard Win11 Bloom wallpaper equivalent
+        className="absolute inset-0 z-0 w-full h-full bg-cover bg-center bg-no-repeat bg-[#f0f0f0]"
+        style={{ backgroundImage: 'url(/wallpapers/porsche-pink.jpg)' }} 
       >
         {/* Desktop Icons (Top-Left to Bottom) */}
         <div className="absolute top-0 left-0 flex flex-col gap-2 p-2 pt-4">
@@ -24,10 +24,12 @@ export default function WinDesktop() {
               <div 
                 key={app.id}
                 onClick={() => openWindow(app)}
-                className="w-20 p-2 flex flex-col items-center justify-center gap-1.5 hover:bg-white/10 rounded-sm border border-transparent hover:border-white/20 cursor-pointer text-white text-xs text-center drop-shadow-md transition-colors"
+                className="w-20 p-2 flex flex-col items-center justify-center gap-1.5 hover:bg-black/5 rounded-sm border border-transparent hover:border-black/10 cursor-pointer text-zinc-900 text-xs text-center transition-colors"
               >
-                {Icon && <Icon className="w-8 h-8 drop-shadow-lg text-blue-400" strokeWidth={1.5} />}
-                <span className="font-medium truncate w-full drop-shadow-md text-[11px]">{app.title}</span>
+                <div className="w-10 h-10 flex items-center justify-center bg-white/80 backdrop-blur-md rounded-lg shadow-sm border border-black/5">
+                  {Icon && <Icon className="w-5 h-5 text-pink-600" strokeWidth={1.5} />}
+                </div>
+                <span className="font-semibold truncate w-full bg-white/60 px-1 py-0.5 rounded backdrop-blur-sm text-[11px] border border-black/5 shadow-sm">{app.title}</span>
               </div>
             );
           })}
