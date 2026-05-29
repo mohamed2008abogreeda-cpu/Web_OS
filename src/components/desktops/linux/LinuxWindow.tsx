@@ -1,5 +1,6 @@
 'use client';
 import { useRef, useState, useCallback } from 'react';
+import { motion } from 'framer-motion';
 import { Rnd } from 'react-rnd';
 import { useOSStore } from '@/store/useOSStore';
 import { APP_ICONS, Minus, Maximize2, X } from '@/lib/icons';
@@ -32,7 +33,11 @@ export default function LinuxWindow({ window: win }: LinuxWindowProps) {
 
   if (win.isMaximized) {
     return (
-      <div 
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.98, y: 10 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.96, transition: { duration: 0.1 } }}
+        transition={{ duration: 0.15, ease: "easeOut" }}
         className="fixed inset-0 top-7 z-50 flex flex-col bg-[#121212] border border-[#333] rounded-none pointer-events-auto"
         onMouseDown={handleFocus}
       >
@@ -56,7 +61,7 @@ export default function LinuxWindow({ window: win }: LinuxWindowProps) {
         <div className="flex-1 overflow-hidden relative bg-[#121212]">
           <AppRenderer componentName={win.component as string} windowId={win.id} />
         </div>
-      </div>
+      </motion.div>
     );
   }
 
@@ -78,7 +83,11 @@ export default function LinuxWindow({ window: win }: LinuxWindowProps) {
       onMouseDown={handleFocus}
       bounds="parent"
     >
-      <div
+      <motion.div
+        initial={{ opacity: 0, scale: 0.98, y: 10 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.96, transition: { duration: 0.1 } }}
+        transition={{ duration: 0.15, ease: "easeOut" }}
         className="relative flex flex-col w-full h-full overflow-hidden bg-[#121212] shadow-2xl border border-[#333] rounded-none font-sans"
         onMouseDown={handleFocus}
       >
@@ -103,7 +112,7 @@ export default function LinuxWindow({ window: win }: LinuxWindowProps) {
           {isDragging && <div className="absolute inset-0 z-[999] bg-transparent" />}
           <AppRenderer componentName={win.component as string} windowId={win.id} />
         </div>
-      </div>
+      </motion.div>
     </Rnd>
   );
 }

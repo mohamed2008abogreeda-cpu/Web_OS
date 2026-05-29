@@ -1,4 +1,5 @@
 'use client';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useOSStore } from '@/store/useOSStore';
 import { SYSTEM_APPS } from '@/lib/mockData';
 import { APP_ICONS } from '@/lib/icons';
@@ -9,7 +10,12 @@ export default function LinuxDesktop() {
   const { windows, openWindow } = useOSStore();
 
   return (
-    <div className="w-full h-screen overflow-hidden bg-black flex flex-col font-sans select-none">
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.6, ease: "easeOut" }}
+      className="w-full h-screen overflow-hidden bg-black flex flex-col font-sans select-none"
+    >
       
       {/* Top Panel */}
       <LinuxPanel />
@@ -36,10 +42,12 @@ export default function LinuxDesktop() {
         </div>
 
         {/* Render Open Windows STRICTLY using LinuxWindow */}
-        {windows.map(win => (
-          <LinuxWindow key={win.id} window={win} />
-        ))}
+        <AnimatePresence>
+          {windows.map(win => (
+            <LinuxWindow key={win.id} window={win} />
+          ))}
+        </AnimatePresence>
       </div>
-    </div>
+    </motion.div>
   );
 }

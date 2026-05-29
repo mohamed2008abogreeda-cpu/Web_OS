@@ -9,7 +9,7 @@ export default function LinuxPanel() {
   const [time, setTime] = useState<Date | null>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
-  const { openWindow } = useOSStore();
+  const { openWindow, logoutUser } = useOSStore();
 
   useEffect(() => {
     setTime(new Date());
@@ -80,7 +80,7 @@ export default function LinuxPanel() {
           <Volume2 className="w-3.5 h-3.5 cursor-pointer hover:text-white transition-colors" />
           <Battery className="w-3.5 h-3.5 cursor-pointer hover:text-white transition-colors" />
         </div>
-        <button className="hover:text-red-500 transition-colors cursor-pointer text-zinc-400 h-full flex items-center px-2">
+        <button onClick={logoutUser} className="hover:text-red-500 transition-colors cursor-pointer text-zinc-400 h-full flex items-center px-2">
           <Power className="w-3.5 h-3.5" />
         </button>
       </div>
