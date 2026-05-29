@@ -8,6 +8,7 @@ import { useOSStore } from '@/store/useOSStore';
 import { SYSTEM_APPS, USERS } from '@/lib/mockData';
 import { APP_ICONS } from '@/lib/icons';
 import { Play, Pause, SkipForward, SkipBack, Wifi, Battery, Volume2, RotateCcw, Lock, Edit3 } from 'lucide-react';
+import { toast } from 'sonner';
 import AeroTaskbar from './AeroTaskbar';
 
 function ClockWidget() {

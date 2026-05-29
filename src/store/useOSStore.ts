@@ -4,13 +4,16 @@ import type { OSState, AppDefinition, UserName, BootPhase, WindowState } from '@
 let windowCounter = 0;
 let bc: BroadcastChannel | null = null;
 
+// Generate a unique session ID for this instance
+const localSessionId = Math.random().toString(36).substring(2, 15);
+
 if (typeof window !== 'undefined') {
   bc = new BroadcastChannel('os-mirror');
 }
 
 const broadcastState = (windows: WindowState[]) => {
   if (bc) {
-    bc.postMessage({ type: 'SYNC_WINDOWS', windows });
+    bc.postMessage({ type: 'SYNC_WINDOWS', windows, sessionId: localSessionId });
   }
 };
 
@@ -19,7 +22,7 @@ export const broadcastCursor = (x: number, y: number) => {
   if (!bc) return;
   const now = Date.now();
   if (now - lastCursorTime > 50) { // throttle 50ms
-    bc.postMessage({ type: 'SYNC_CURSOR', cursor: { x, y } });
+    bc.postMessage({ type: 'SYNC_CURSOR', cursor: { x, y }, sessionId: localSessionId });
     lastCursorTime = now;
   }
 };
@@ -28,7 +31,12 @@ export const useOSStore = create<OSState>((set, get) => {
   // Listen for sync messages
   if (bc) {
     bc.onmessage = (event) => {
-      if (!get().isSpectating) return;
+      const state = get();
+      if (!state.isSpectating) return;
+      
+      // Zero-Click Architecture: only listen to the active session
+      if (event.data.sessionId !== state.activeSession) return;
+
       if (event.data.type === 'SYNC_WINDOWS') {
         set({ windows: event.data.windows });
       } else if (event.data.type === 'SYNC_CURSOR') {
@@ -42,11 +50,13 @@ export const useOSStore = create<OSState>((set, get) => {
     currentUser: null,
     bootPhase: 'booting' as BootPhase,
     isSpectating: false,
+    sessionId: localSessionId,
+    activeSession: null,
 
     // ── Window Manager ────────────────────────────────────
     windows: [],
     activeWindowId: null,
-    nextZIndex: 100, // kept for signature compatibility, though z-index is array-driven now
+    nextZIndex: 100,
 
     // ── UI ────────────────────────────────────────────────
     isStartMenuOpen: false,
@@ -61,7 +71,7 @@ export const useOSStore = create<OSState>((set, get) => {
 
     setMobile: (val: boolean) => set({ isMobile: val }),
 
-    setSpectating: (val: boolean) => set({ isSpectating: val }),
+    setSpectating: (val: boolean, session?: string) => set({ isSpectating: val, activeSession: session || null }),
 
     syncWindows: (windows: WindowState[]) => set({ windows }),
 
@@ -124,7 +134,7 @@ export const useOSStore = create<OSState>((set, get) => {
         isOpen: true,
         isMinimized: false,
         isMaximized: isMob,
-        zIndex: 0, // Not strictly used if rendering order matters, but maintained
+        zIndex: 0,
         x: isMob ? 0 : 60 + offset,
         y: isMob ? 0 : 30 + offset,
         width: isMob ? window.innerWidth : app.defaultWidth,
@@ -187,7 +197,7 @@ export const useOSStore = create<OSState>((set, get) => {
       if (get().isSpectating) return;
 
       const state = get();
-      if (state.activeWindowId === id) return; // already focused
+      if (state.activeWindowId === id) return;
 
       const target = state.windows.find((w) => w.id === id);
       if (!target) return;

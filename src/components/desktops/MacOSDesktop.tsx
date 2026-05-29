@@ -3,7 +3,9 @@ import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useOSStore } from '@/store/useOSStore';
 import { SYSTEM_APPS, USERS } from '@/lib/mockData';
+import MacOSTaskbar from './MacOSTaskbar';
 import { APP_ICONS } from '@/lib/icons';
+import { Volume2, Wifi, Battery, Search } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -41,6 +43,7 @@ export default function MacOSDesktop() {
       exit={{ opacity: 0 }}
       transition={{ duration: 0.6 }}
       style={{ backgroundColor: '#000' }}
+      data-testid="desktop"
     >
       {/* Wallpaper */}
       <div className="absolute inset-0 z-0">
@@ -56,9 +59,36 @@ export default function MacOSDesktop() {
       <div className="h-6 shrink-0 bg-white/20 backdrop-blur-2xl border-b border-white/10 flex items-center justify-between px-3 z-40 text-white text-[13px] font-medium shadow-sm">
         {/* Left: Apple Icon & Menus */}
         <div className="flex items-center gap-4">
-          <div className="flex items-center justify-center font-bold text-lg leading-none mb-1 cursor-pointer">
-            
-          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <div 
+                className="flex items-center justify-center font-bold text-lg leading-none mb-1 cursor-pointer hover:text-white"
+                data-testid="start-button"
+              >
+                
+              </div>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" sideOffset={4} className="w-56 bg-zinc-950/90 backdrop-blur-3xl border-white/10 text-white rounded-xl shadow-2xl">
+              <DropdownMenuItem className="cursor-pointer focus:bg-blue-500 focus:text-white" onClick={() => toast('About This Mac')}>
+                About This Mac
+              </DropdownMenuItem>
+              <DropdownMenuSeparator className="bg-white/10" />
+              <DropdownMenuItem className="cursor-pointer focus:bg-blue-500 focus:text-white" onClick={() => toast('System Settings...')}>
+                System Settings...
+              </DropdownMenuItem>
+              <DropdownMenuSeparator className="bg-white/10" />
+              <DropdownMenuItem 
+                className="cursor-pointer focus:bg-blue-500 focus:text-white" 
+                onClick={() => useOSStore.getState().logout()}
+                data-testid="switch-user"
+              >
+                Switch User...
+              </DropdownMenuItem>
+              <DropdownMenuItem className="cursor-pointer focus:bg-blue-500 focus:text-white" onClick={() => useOSStore.getState().logout()}>
+                Log Out {user?.name}...
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <div className="font-bold cursor-pointer">{activeAppName}</div>
           <div className="hidden sm:flex gap-4 text-white/90">
             <span className="cursor-pointer hover:text-white" onClick={() => toast('File Menu')}>File</span>

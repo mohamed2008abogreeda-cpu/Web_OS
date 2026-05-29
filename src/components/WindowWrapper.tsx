@@ -36,7 +36,11 @@ export default function WindowWrapper({ window: win, children }: WindowWrapperPr
 
   const handleFocus = useCallback(() => {
     if (!isActive) focusWindow(win.id);
-  }, [isActive, focusWindow, win.id]);  // Mobile or Maximized Mode — Optimized full height and premium animations
+  }, [isActive, focusWindow, win.id]);
+
+  const [isDragging, setIsDragging] = useState(false);
+
+  // Mobile or Maximized Mode — Optimized full height and premium animations
   if (isMobile || win.isMaximized) {
     return (
       <motion.div
@@ -79,7 +83,6 @@ export default function WindowWrapper({ window: win, children }: WindowWrapperPr
     );
   }
 
-  const [isDragging, setIsDragging] = useState(false);
 
   // Desktop: draggable/resizable with premium fluid physics-based motion
   return (

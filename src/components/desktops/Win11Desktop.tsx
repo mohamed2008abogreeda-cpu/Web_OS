@@ -17,6 +17,7 @@ export default function Win11Desktop() {
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.4 }}
+      data-testid="desktop"
     >
       {/* Windows 11 Wallpaper */}
       <div className="absolute inset-0 z-0">

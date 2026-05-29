@@ -81,8 +81,10 @@ export interface OSState {
   isAdminAuthenticated: boolean;
 
   // Spectator Mode
+  sessionId: string;
+  activeSession: string | null;
   isSpectating: boolean;
-  setSpectating: (val: boolean) => void;
+  setSpectating: (val: boolean, session?: string) => void;
   ghostCursor?: { x: number; y: number };
 
   // Actions

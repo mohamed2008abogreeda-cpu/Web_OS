@@ -6,22 +6,22 @@
 
 # Test info
 
-- Name: os-flow.spec.ts >> Window Management >> multiple windows can be opened
-- Location: tests\os-flow.spec.ts:223:7
+- Name: os-flow.spec.ts >> Terminal App >> sudo status command shows system diagnostics
+- Location: tests\os-flow.spec.ts:294:7
 
 # Error details
 
 ```
 Error: expect(locator).toBeVisible() failed
 
-Locator: getByTestId('about-app')
+Locator: getByTestId('terminal-app')
 Expected: visible
 Timeout: 8000ms
 Error: element(s) not found
 
 Call log:
   - Expect "toBeVisible" with timeout 8000ms
-  - waiting for getByTestId('about-app')
+  - waiting for getByTestId('terminal-app')
 
 ```
 
@@ -29,7 +29,7 @@ Call log:
 - main:
   - region "Notifications alt+T"
   - img "Wallpaper"
-  - text: ● 17:25:17 ⬡ Terminal Still Woozy - Lava
+  - text: ● 17:25:54 ⬡ Desktop Still Woozy - Lava
   - button
   - button
   - button
@@ -48,21 +48,7 @@ Call log:
   - button
   - button
   - button
-  - text: 17:25 Moamen Creative Developer & UI/UX Engineer CPU Performance 37%
-  - img
-  - text: RAM Allocation 41% (2.8 GB) Audio Volume 65%
-  - slider: "65"
-  - text: Brightness 80%
-  - slider: "80"
-  - text: Quick Apps
-  - button "Projects Open"
-  - button "Terminal Open"
-  - button "Comms Open"
-  - button "About Open"
-  - button "Music Open"
-  - button "Settings Open"
-  - button "Switch Profile Context"
-  - button "Sign Out Session"
+  - text: 17:25
   - button
   - button "Projects"
   - button "Terminal"
@@ -71,12 +57,6 @@ Call log:
   - button "Music"
   - button "Settings"
   - button "Switch User Profile"
-  - text: Terminal
-  - button "Minimize"
-  - button "Maximize"
-  - button "Close"
-  - text: Mohammed@WebOS:~$ sys.boot [OK] WebOS System Core Initialized. [OK] Spectator Daemon running in background. Type "help" to see available commands. Mohammed@WebOS:~$
-  - textbox
 - region "Notifications alt+T"
 - alert
 ```
@@ -84,41 +64,6 @@ Call log:
 # Test source
 
 ```ts
-  131 | // ============================================================
-  132 | test.describe('Start Menu', () => {
-  133 | 
-  134 |   test.beforeEach(async ({ page, isMobile }) => {
-  135 |     test.skip(!!isMobile, 'Desktop-only tests');
-  136 |     await loginToDesktop(page);
-  137 |   });
-  138 | 
-  139 |   test('opens and shows Quick Apps section', async ({ page }) => {
-  140 |     await page.getByTestId('start-button').click();
-  141 |     await expect(page.getByText('Quick Apps').first()).toBeVisible({ timeout: 5000 });
-  142 |   });
-  143 | 
-  144 |   test('shows system apps in menu', async ({ page }) => {
-  145 |     await page.getByTestId('start-button').click();
-  146 |     await expect(page.getByText('Quick Apps').first()).toBeVisible({ timeout: 5000 });
-  147 |     // Check that at least Terminal and About are visible
-  148 |     await expect(page.getByText('Terminal').first()).toBeVisible();
-  149 |     await expect(page.getByText('About').first()).toBeVisible();
-  150 |   });
-  151 | 
-  152 |   test('opens and shows Quick apps section', async ({ page }) => {
-  153 |     await page.getByTestId('start-button').click();
-  154 |     await expect(page.getByText('Quick Apps').first()).toBeVisible({ timeout: 5000 });
-  155 |     // The username should be displayed in the menu panel
-  156 |     await expect(page.getByText('Moamen').first()).toBeVisible();
-  157 |   });
-  158 | 
-  159 |   test('shows Sign Out button', async ({ page }) => {
-  160 |     await page.getByTestId('start-button').click();
-  161 |     await expect(page.getByText('Sign Out').first()).toBeVisible({ timeout: 5000 });
-  162 |   });
-  163 | 
-  164 |   test('closes when clicking outside', async ({ page }) => {
-  165 |     await page.getByTestId('start-button').click();
   166 |     await expect(page.getByText('Quick Apps').first()).toBeVisible({ timeout: 5000 });
   167 |     // Click outside the menu (top left corner of screen)
   168 |     await page.mouse.click(10, 10);
@@ -184,8 +129,7 @@ Call log:
   228 | 
   229 |     // Open About
   230 |     await openAppFromStartMenu(page, 'About');
-> 231 |     await expect(page.getByTestId('about-app')).toBeVisible({ timeout: 8000 });
-      |                                                 ^ Error: expect(locator).toBeVisible() failed
+  231 |     await expect(page.getByTestId('about-app')).toBeVisible({ timeout: 8000 });
   232 | 
   233 |     // Both visible
   234 |     await expect(page.getByTestId('terminal-app')).toBeVisible();
@@ -220,7 +164,8 @@ Call log:
   263 |   test.beforeEach(async ({ page }) => {
   264 |     await loginToDesktop(page);
   265 |     await openAppFromStartMenu(page, 'Terminal');
-  266 |     await expect(page.getByTestId('terminal-app')).toBeVisible({ timeout: 8000 });
+> 266 |     await expect(page.getByTestId('terminal-app')).toBeVisible({ timeout: 8000 });
+      |                                                    ^ Error: expect(locator).toBeVisible() failed
   267 |   });
   268 | 
   269 |   test('shows system init on startup', async ({ page }) => {
@@ -286,4 +231,39 @@ Call log:
   329 |   });
   330 | 
   331 |   test('shows project tags', async ({ page }) => {
+  332 |     await expect(page.getByText('WebRTC').first()).toBeVisible({ timeout: 5000 });
+  333 |   });
+  334 | });
+  335 | 
+  336 | // ============================================================
+  337 | // 8. TASKBAR DOCK TESTS
+  338 | // ============================================================
+  339 | test.describe('Taskbar Dock', () => {
+  340 | 
+  341 |   test.beforeEach(async ({ page, isMobile }) => {
+  342 |     test.skip(!!isMobile, 'Desktop-only tests');
+  343 |     await loginToDesktop(page, 'login-moamen');
+  344 |   });
+  345 | 
+  346 |   test('taskbar dock is visible', async ({ page }) => {
+  347 |     await expect(page.getByTestId('taskbar')).toBeVisible();
+  348 |   });
+  349 | 
+  350 |   test('taskbar shows start button', async ({ page }) => {
+  351 |     await expect(page.getByTestId('start-button')).toBeVisible();
+  352 |   });
+  353 | 
+  354 | 
+  355 | 
+  356 |   test('taskbar has multiple dock buttons', async ({ page }) => {
+  357 |     const taskbar = page.getByTestId('taskbar');
+  358 |     const dockButtons = taskbar.locator('button');
+  359 |     const count = await dockButtons.count();
+  360 |     // Verify there are buttons in the taskbar
+  361 |     expect(count).toBeGreaterThan(0);
+  362 |   });
+  363 | });
+  364 | 
+  365 | // ============================================================
+  366 | // 9. USER SWITCHING TESTS
 ```

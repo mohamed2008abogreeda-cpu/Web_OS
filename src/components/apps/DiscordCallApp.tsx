@@ -1,17 +1,14 @@
-/**
- * DiscordCallApp — Visitor-side voice call (embedded in the WebOS window)
- *
- * This component receives a `windowId` prop from the WindowManager.
- * It generates a stable roomId, calls the /api/call/create-room endpoint
- * to notify the admin via ntfy, then uses useWebRTCCall to manage the call.
- */
+'use client';
+// ============================================================
+// DiscordCallApp — Premium VoIP Hub & Spectator Magic Link
+// ============================================================
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { PhoneOff, Mic, MicOff, PhoneCall, Volume2, ShieldCheck, User, Loader2, Eye } from 'lucide-react';
+import { PhoneOff, Mic, MicOff, PhoneCall, Volume2, ShieldCheck, User, Loader2, Link as LinkIcon, Headphones } from 'lucide-react';
 import { useWebRTCCall } from '@/hooks/useWebRTCCall';
 import { useOSStore } from '@/store/useOSStore';
 import { toast } from 'sonner';
+import { motion } from 'framer-motion';
 
-// Generate a stable room ID per session
 function makeRoomId(): string {
   if (typeof window !== 'undefined') {
     const stored = sessionStorage.getItem('webos-call-room');
@@ -26,16 +23,16 @@ function makeRoomId(): string {
 export default function DiscordCallApp({ windowId }: { windowId: string }) {
   const roomId = useMemo(() => makeRoomId(), []);
   const [micMuted, setMicMuted] = useState(false);
+  const [deafened, setDeafened] = useState(false);
   const [notified, setNotified] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  const { isSpectating, setSpectating } = useOSStore();
+  const { sessionId } = useOSStore();
 
   const {
     status,
     callStatus,
     connected,
-    isReady,
     isWaiting,
     remoteStream,
     joinCall,
@@ -43,7 +40,6 @@ export default function DiscordCallApp({ windowId }: { windowId: string }) {
     toggleMic,
   } = useWebRTCCall(roomId, false);
 
-  // Play remote audio
   useEffect(() => {
     if (remoteStream && audioRef.current) {
       audioRef.current.srcObject = remoteStream;
@@ -51,9 +47,7 @@ export default function DiscordCallApp({ windowId }: { windowId: string }) {
     }
   }, [remoteStream]);
 
-  // Notify admin when visitor joins the call
   const handleJoinCall = async () => {
-    // First, notify admin (send push notification)
     if (!notified) {
       try {
         await fetch('/api/call/create-room', {
@@ -66,7 +60,6 @@ export default function DiscordCallApp({ windowId }: { windowId: string }) {
         console.warn('Failed to notify admin:', err);
       }
     }
-    // Then join the WebRTC call
     joinCall();
   };
 
@@ -75,135 +68,129 @@ export default function DiscordCallApp({ windowId }: { windowId: string }) {
     setMicMuted(!enabled);
   };
 
-  const handleWatchSession = () => {
-    setSpectating(true);
-    toast.success('Spectator Mode Active', {
-      description: 'You are now watching the live session.',
+  const handleGenerateMagicLink = () => {
+    const link = `${window.location.origin}/?spectate=${sessionId}`;
+    navigator.clipboard.writeText(link);
+    toast.success('Magic Link Copied!', {
+      description: 'Send this link to the admin for zero-click spectator access.',
     });
   };
 
-  // ─── Status indicator color ────────────────────────────
   const dotColor = connected
-    ? 'bg-emerald-500 animate-pulse'
+    ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.8)]'
     : isWaiting
-      ? 'bg-purple-500 animate-pulse'
+      ? 'bg-purple-500 shadow-[0_0_10px_rgba(168,85,247,0.8)]'
       : callStatus === 'error'
         ? 'bg-red-500'
         : 'bg-amber-500';
 
-  const avatarBorder = connected
-    ? 'border-emerald-500/50 shadow-[0_0_20px_rgba(16,185,129,0.2)]'
-    : isWaiting
-      ? 'border-purple-500/50 shadow-[0_0_20px_rgba(168,85,247,0.2)]'
-      : 'border-white/10';
-
   return (
-    <div className="flex flex-col h-full bg-[#1e1f22] text-white">
-      {/* ─── Header ──────────────────────────────────────── */}
-      <div className="flex items-center justify-between px-4 py-3 bg-[#2b2d31] border-b border-[#1e1f22] shrink-0">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-[#5865F2]/20 flex items-center justify-center">
-            <Volume2 className="w-4 h-4 text-[#5865F2]" />
+    <div className="flex flex-col h-full bg-zinc-950/80 backdrop-blur-3xl text-white select-none">
+      {/* Header */}
+      <div className="flex items-center justify-between px-6 py-4 border-b border-white/5 bg-black/40 shrink-0">
+        <div className="flex items-center gap-4">
+          <div className="w-10 h-10 rounded-xl bg-indigo-500/20 flex items-center justify-center border border-indigo-500/30 shadow-[0_0_15px_rgba(99,102,241,0.2)]">
+            <Volume2 className="w-5 h-5 text-indigo-400" />
           </div>
           <div>
-            <h3 className="font-semibold text-[15px] leading-none text-gray-100">Voice Channel</h3>
-            <span className="text-[11px] font-medium text-emerald-400 mt-1 flex items-center gap-1">
-              <ShieldCheck className="w-3 h-3" /> End-to-End Encrypted
+            <h3 className="font-extrabold text-lg leading-none tracking-tight">Secure Comms</h3>
+            <span className="text-[11px] font-bold text-emerald-400 mt-1.5 flex items-center gap-1.5 uppercase tracking-wider">
+              <ShieldCheck className="w-3.5 h-3.5" /> End-to-End Encrypted
             </span>
           </div>
         </div>
 
-        {/* Watch Live Button in Header */}
-        {!isSpectating && (
-          <button
-            onClick={handleWatchSession}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20 hover:text-indigo-300 transition-colors border border-indigo-500/20 text-xs font-semibold"
-          >
-            <Eye className="w-3.5 h-3.5" /> Watch Screen
-          </button>
-        )}
-        {isSpectating && (
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-semibold">
-            <Eye className="w-3.5 h-3.5 animate-pulse" /> Spectating...
-          </div>
-        )}
+        <button
+          onClick={handleGenerateMagicLink}
+          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20 hover:text-indigo-300 transition-all border border-indigo-500/20 text-xs font-bold shadow-lg"
+        >
+          <LinkIcon className="w-4 h-4" /> Copy Spectate Link
+        </button>
       </div>
 
-      {/* ─── Main ────────────────────────────────────────── */}
-      <div className="flex-1 flex flex-col items-center justify-center p-6 relative overflow-hidden bg-gradient-to-b from-[#1e1f22] to-[#111214]">
-        {/* Background glow */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-[#5865F2]/10 rounded-full blur-[80px] pointer-events-none" />
+      {/* Main VoIP Interface */}
+      <div className="flex-1 flex flex-col items-center justify-center p-8 relative overflow-hidden">
+        {/* Animated Background Glow */}
+        <motion.div
+          animate={{ scale: connected ? [1, 1.2, 1] : 1, opacity: connected ? [0.1, 0.2, 0.1] : 0.05 }}
+          transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-indigo-500 rounded-full blur-[100px] pointer-events-none"
+        />
 
-        <div className="flex flex-col items-center gap-6 relative z-10 w-full max-w-sm">
-          {/* Status pill */}
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-[#2b2d31] rounded-full border border-white/5">
-            <span className={`w-2 h-2 rounded-full ${dotColor}`} />
-            <span className="text-xs font-medium text-gray-300">{status}</span>
+        <div className="flex flex-col items-center gap-8 relative z-10 w-full max-w-sm">
+          {/* Status Badge */}
+          <div className="inline-flex items-center gap-3 px-4 py-2 bg-black/50 rounded-full border border-white/10 backdrop-blur-md">
+            <span className={`w-2.5 h-2.5 rounded-full ${dotColor} animate-pulse`} />
+            <span className="text-sm font-bold text-zinc-300 uppercase tracking-widest">{status}</span>
           </div>
 
-          {/* Avatar */}
-          <div className="relative mt-2">
-            <div className={`w-24 h-24 rounded-full bg-[#2b2d31] border-4 flex items-center justify-center transition-all duration-300 ${avatarBorder}`}>
-              <User className="w-10 h-10 text-gray-400" />
+          {/* Pulsing Avatar */}
+          <motion.div
+            animate={connected ? { scale: [1, 1.05, 1] } : {}}
+            transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
+            className="relative mt-4"
+          >
+            <div className={`w-32 h-32 rounded-full bg-zinc-900 border-4 flex items-center justify-center shadow-2xl transition-all duration-500 ${connected ? 'border-emerald-500 shadow-[0_0_40px_rgba(16,185,129,0.3)]' : 'border-white/10'}`}>
+              <User className={`w-12 h-12 ${connected ? 'text-emerald-400' : 'text-zinc-500'}`} />
             </div>
-            <div className="absolute -bottom-2 -right-2 bg-[#232428] px-2 py-1 rounded-md text-[10px] font-bold text-gray-300 border border-white/5">
+            <div className="absolute -bottom-2 right-0 bg-zinc-800 px-3 py-1 rounded-lg text-xs font-bold border border-white/10 shadow-lg">
               Admin
             </div>
-          </div>
+          </motion.div>
 
-          {/* ─── Action Area ─────────────────────────────── */}
-          <div className="mt-6 w-full flex flex-col justify-center min-h-[80px] items-center gap-3">
-            {/* State: IDLE / CONNECTING / READY → Show join button */}
+          {/* Action Area */}
+          <div className="mt-8 w-full flex flex-col items-center justify-center min-h-[100px] gap-6">
             {!connected && !isWaiting && (
               <button
                 onClick={handleJoinCall}
                 disabled={callStatus === 'connecting'}
-                className="w-full sm:w-auto px-8 py-3.5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-full font-bold flex items-center justify-center gap-3 transition-all shadow-[0_0_15px_rgba(16,185,129,0.3)] hover:shadow-[0_0_25px_rgba(16,185,129,0.5)] transform hover:-translate-y-0.5"
+                className="w-full sm:w-auto px-10 py-4 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-black rounded-full font-extrabold text-lg flex items-center justify-center gap-3 transition-all shadow-[0_0_25px_rgba(16,185,129,0.4)] hover:shadow-[0_0_35px_rgba(16,185,129,0.6)] transform hover:scale-105"
               >
-                {callStatus === 'connecting' ? (
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                ) : (
-                  <PhoneCall className="w-5 h-5" />
-                )}
-                {callStatus === 'connecting' ? 'Connecting...' : 'Join Voice Channel'}
+                {callStatus === 'connecting' ? <Loader2 className="w-6 h-6 animate-spin" /> : <PhoneCall className="w-6 h-6" />}
+                {callStatus === 'connecting' ? 'Connecting...' : 'Start Connection'}
               </button>
             )}
 
-            {/* State: RINGING → Show spinner */}
             {!connected && isWaiting && (
-              <div className="flex flex-col items-center gap-3">
-                <div className="w-10 h-10 border-4 border-white/10 border-t-[#5865F2] rounded-full animate-spin" />
-                <span className="text-xs text-gray-400 font-medium">Waiting for the other party...</span>
+              <div className="flex flex-col items-center gap-4">
+                <div className="w-12 h-12 border-4 border-white/10 border-t-indigo-500 rounded-full animate-spin" />
+                <span className="text-sm text-zinc-400 font-bold uppercase tracking-widest">Awaiting Admin...</span>
               </div>
             )}
 
-            {/* State: ACTIVE → Show call controls */}
             {connected && (
-              <div className="flex items-center justify-center gap-4 p-4 bg-[#2b2d31] rounded-2xl w-full border border-white/5 shadow-xl animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <div className="flex items-center justify-center gap-6 p-6 bg-black/40 rounded-3xl w-full border border-white/10 shadow-2xl backdrop-blur-xl animate-in fade-in slide-in-from-bottom-4 duration-500">
+                
+                {/* Mute Button */}
                 <button
                   onClick={handleToggleMic}
-                  className={`flex flex-col items-center justify-center w-16 h-16 rounded-xl transition-all duration-200 ${
+                  className={`flex flex-col items-center justify-center w-20 h-20 rounded-full transition-all duration-300 hover:scale-105 ${
                     micMuted
-                      ? 'bg-amber-500/10 text-amber-500 hover:bg-amber-500/20'
-                      : 'bg-white/5 text-gray-300 hover:bg-white/10 hover:text-white'
+                      ? 'bg-zinc-800 text-rose-400 border-2 border-rose-500/50 shadow-[0_0_20px_rgba(244,63,94,0.2)]'
+                      : 'bg-zinc-800 text-white hover:bg-zinc-700 border-2 border-transparent'
                   }`}
                 >
-                  <div className={`p-2 rounded-full ${micMuted ? 'bg-amber-500/20' : ''}`}>
-                    {micMuted ? <MicOff className="w-6 h-6" /> : <Mic className="w-6 h-6" />}
-                  </div>
-                  <span className="text-[10px] font-medium mt-1">{micMuted ? 'Unmute' : 'Mute'}</span>
+                  {micMuted ? <MicOff className="w-7 h-7" /> : <Mic className="w-7 h-7" />}
                 </button>
 
-                <div className="w-px h-10 bg-white/10" />
+                {/* Deafen Button */}
+                <button
+                  onClick={() => setDeafened(!deafened)}
+                  className={`flex flex-col items-center justify-center w-20 h-20 rounded-full transition-all duration-300 hover:scale-105 ${
+                    deafened
+                      ? 'bg-zinc-800 text-rose-400 border-2 border-rose-500/50 shadow-[0_0_20px_rgba(244,63,94,0.2)]'
+                      : 'bg-zinc-800 text-white hover:bg-zinc-700 border-2 border-transparent'
+                  }`}
+                >
+                  {deafened ? <Volume2 className="w-7 h-7 line-through opacity-50" /> : <Headphones className="w-7 h-7" />}
+                </button>
 
+                {/* End Call Button */}
                 <button
                   onClick={endCall}
-                  className="flex flex-col items-center justify-center w-16 h-16 rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all duration-200 group"
+                  className="flex flex-col items-center justify-center w-20 h-20 rounded-full bg-rose-500 text-white hover:bg-rose-400 transition-all duration-300 hover:scale-105 shadow-[0_0_30px_rgba(244,63,94,0.5)] hover:shadow-[0_0_40px_rgba(244,63,94,0.7)]"
                 >
-                  <div className="p-2 rounded-full bg-red-500/20 group-hover:bg-white/20 transition-colors">
-                    <PhoneOff className="w-6 h-6" />
-                  </div>
-                  <span className="text-[10px] font-medium mt-1">Disconnect</span>
+                  <PhoneOff className="w-8 h-8" />
                 </button>
               </div>
             )}
@@ -211,7 +198,7 @@ export default function DiscordCallApp({ windowId }: { windowId: string }) {
         </div>
       </div>
 
-      <audio ref={audioRef} autoPlay />
+      <audio ref={audioRef} autoPlay muted={deafened} />
     </div>
   );
 }

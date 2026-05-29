@@ -53,6 +53,9 @@ import {
   CheckCircle2,
   XCircle,
   Info,
+  Battery,
+  Fingerprint,
+  Lock,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -146,6 +149,9 @@ export {
   ClipboardList,
   FlaskConical,
   Music,
+  Battery,
+  Fingerprint,
+  Lock,
 };
 
 export type { LucideIcon };
