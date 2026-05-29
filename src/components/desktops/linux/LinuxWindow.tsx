@@ -32,7 +32,7 @@ export default function LinuxWindow({ window: win }: LinuxWindowProps) {
   if (win.isMaximized) {
     return (
       <div 
-        className="fixed inset-0 top-7 z-50 flex flex-col bg-[#1a1a1a] shadow-[0_15px_40px_rgba(0,0,0,0.7)] border border-[#333] rounded-sm pointer-events-auto"
+        className="fixed inset-0 top-7 z-50 flex flex-col bg-[#1a1a1a] shadow-[0_15px_40px_rgba(0,0,0,0.7)] border border-[#333] rounded-none pointer-events-auto"
         onMouseDown={handleFocus}
       >
         <div className="h-8 bg-[#252526] border-b border-[#111] flex items-center justify-between px-3 select-none">
@@ -78,7 +78,7 @@ export default function LinuxWindow({ window: win }: LinuxWindowProps) {
       bounds="parent"
     >
       <div
-        className="relative flex flex-col w-full h-full overflow-hidden bg-[#1a1a1a] shadow-[0_15px_40px_rgba(0,0,0,0.7)] border border-[#333] rounded-sm font-sans"
+        className="relative flex flex-col w-full h-full overflow-hidden bg-[#1a1a1a] shadow-[0_15px_40px_rgba(0,0,0,0.7)] border border-[#333] rounded-none font-sans"
         onMouseDown={handleFocus}
       >
         <div className="linux-drag-handle h-8 bg-[#252526] border-b border-[#111] flex items-center justify-between px-3 select-none">
