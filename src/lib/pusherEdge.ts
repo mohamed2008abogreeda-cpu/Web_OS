@@ -3,10 +3,10 @@ import hmacSHA256 from 'crypto-js/hmac-sha256';
 import Hex from 'crypto-js/enc-hex';
 
 export async function triggerPusherEdge(channel: string, event: string, payload: any) {
-  const appId = process.env.PUSHER_APP_ID!;
-  const key = process.env.NEXT_PUBLIC_PUSHER_KEY!;
-  const secret = process.env.PUSHER_SECRET!;
-  const cluster = process.env.NEXT_PUBLIC_PUSHER_CLUSTER!;
+  const appId = process.env.PUSHER_APP_ID || 'dummy_app_id';
+  const key = process.env.NEXT_PUBLIC_PUSHER_KEY || 'dummy_key';
+  const secret = process.env.PUSHER_SECRET || 'dummy_secret';
+  const cluster = process.env.NEXT_PUBLIC_PUSHER_CLUSTER || 'us2';
 
   const timestamp = Math.floor(Date.now() / 1000).toString();
   const bodyString = JSON.stringify({
