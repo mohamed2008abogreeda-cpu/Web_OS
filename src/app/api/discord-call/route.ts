@@ -1,63 +1,43 @@
-// ============================================================
-// API: POST /api/discord-call — Real phone notification via ntfy
-// ============================================================
-import { NextRequest, NextResponse } from 'next/server';
+export const runtime = 'edge';
 
-const NTFY_TOPIC = 'webos-mohamed-calls';
+import { NextResponse } from 'next/server';
 
-export async function POST(request: NextRequest) {
+export async function POST(req: Request) {
   try {
-    const body = await request.json();
-    const { caller, timestamp, visitorName } = body;
+    const { username, sessionId } = await req.json();
+    const host = req.headers.get('host') || 'localhost:3000';
+    const protocol = host.includes('localhost') ? 'http' : 'https';
+    const spectateLink = `${protocol}://${host}/?spectate=${sessionId}`;
 
-    const callerName = visitorName || caller || 'Anonymous Visitor';
-    const callTime = timestamp
-      ? new Date(timestamp).toLocaleTimeString('en-US', {
-          hour: '2-digit',
-          minute: '2-digit',
-          hour12: true,
-        })
-      : new Date().toLocaleTimeString('en-US', {
-          hour: '2-digit',
-          minute: '2-digit',
-          hour12: true,
-        });
+    const discordWebhookUrl = process.env.DISCORD_WEBHOOK_URL;
 
-    // ── Send REAL notification to phone via ntfy ──
-    // Priority 5 (max/urgent) = phone rings loudly even on silent!
-    const ntfyResponse = await fetch(`https://ntfy.sh/${NTFY_TOPIC}`, {
+    const discordPromise = discordWebhookUrl ? fetch(discordWebhookUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        embeds: [{
+          title: "🚨 INCOMING SECURE CALL",
+          description: `**Visitor:** ${username || 'Unknown'}\n**Session ID:** ${sessionId}\n\n**Action Required:**\n[Click here to Spectate & Answer](${spectateLink})`,
+          color: 0x10B981, // Emerald
+          timestamp: new Date().toISOString()
+        }]
+      })
+    }) : Promise.resolve();
+
+    // Action B (The Ringer): ntfy.sh with Priority 5 and warning tags
+    const ntfyPromise = fetch('https://ntfy.sh/webos-mohamed-calls', {
       method: 'POST',
       headers: {
-        'Title': 'Incoming Call - WebOS Portfolio',
-        'Priority': 'urgent',
-        'Tags': 'phone,rotating_light',
-        'Actions': `view, Open Portfolio, https://webos.foggystorm.dpdns.org/, clear=true`,
+        'Priority': '5',
+        'Tags': 'warning,rotating_light',
       },
-      body: `🔔 ${callerName} is trying to call you!\n⏰ Time: ${callTime}\n\nOpen your portfolio to respond.`,
+      body: `Incoming Call from ${username || 'Visitor'}! Link: ${spectateLink}`
     });
 
-    const ntfyOk = ntfyResponse.ok;
+    await Promise.allSettled([discordPromise, ntfyPromise]);
 
-    console.log(
-      `[Comms Bridge] Call from ${callerName} at ${callTime} — ntfy: ${ntfyOk ? 'SENT ✅' : 'FAILED ❌'}`
-    );
-
-    return NextResponse.json({
-      success: ntfyOk,
-      message: ntfyOk
-        ? 'Ring notification sent to phone!'
-        : 'Failed to reach notification service',
-      bridge: {
-        status: ntfyOk ? 'connected' : 'error',
-        service: 'ntfy',
-        topic: NTFY_TOPIC,
-      },
-    });
-  } catch (err) {
-    console.error('[Comms Bridge] Error:', err);
-    return NextResponse.json(
-      { success: false, message: 'Bridge connection failed' },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: true });
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }

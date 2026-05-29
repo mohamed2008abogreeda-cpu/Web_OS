@@ -1,242 +1,102 @@
 'use client';
-// ============================================================
-// ControlPanel — Secret admin panel for project CRUD
-// ============================================================
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useOSStore } from '@/store/useOSStore';
-import { PROJECTS } from '@/lib/mockData';
-import type { Project } from '@/types';
-import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { toast } from 'sonner';
-
-type Tab = 'list' | 'add' | 'edit';
-
-function ProjectForm({
-  project,
-  onSave,
-  onCancel,
-}: {
-  project?: Project;
-  onSave: (data: Partial<Project>) => void;
-  onCancel: () => void;
-}) {
-  const [form, setForm] = useState({
-    title: project?.title || '',
-    description: project?.description || '',
-    projectUrl: project?.projectUrl || '',
-    hasIframe: project?.hasIframe || false,
-    liveApiEndpoint: project?.liveApiEndpoint || '',
-    tags: project?.tags.join(', ') || '',
-    iconUrl: project?.iconUrl || '📦',
-  });
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onSave({
-      ...form,
-      tags: form.tags.split(',').map((t) => t.trim()).filter(Boolean),
-      liveApiEndpoint: form.liveApiEndpoint || null,
-    });
-  };
-
-  const inputClass = `w-full px-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.08]
-                      text-gray-200 text-sm outline-none focus:border-indigo-500/50 focus:ring-2 focus:ring-indigo-500/10
-                      placeholder:text-gray-600 transition-all duration-200`;
-
-  return (
-    <form onSubmit={handleSubmit} className="p-5 flex flex-col gap-5 overflow-y-auto flex-1 select-none">
-      <div>
-        <label className="text-gray-400 text-xs font-bold uppercase tracking-wider mb-2 block">Project Title</label>
-        <input
-          value={form.title}
-          onChange={(e) => setForm({ ...form, title: e.target.value })}
-          className={inputClass}
-          placeholder="Project name"
-          required
-        />
-      </div>
-
-      <div>
-        <label className="text-gray-400 text-xs font-bold uppercase tracking-wider mb-2 block">Icon (emoji)</label>
-        <input
-          value={form.iconUrl}
-          onChange={(e) => setForm({ ...form, iconUrl: e.target.value })}
-          className={inputClass}
-          placeholder="📦"
-        />
-      </div>
-
-      <div>
-        <label className="text-gray-400 text-xs font-bold uppercase tracking-wider mb-2 block">Project URL</label>
-        <input
-          value={form.projectUrl}
-          onChange={(e) => setForm({ ...form, projectUrl: e.target.value })}
-          className={inputClass}
-          placeholder="https://..."
-          required
-        />
-      </div>
-
-      <div className="flex items-center justify-between p-3.5 card-surface border border-white/5 rounded-2xl">
-        <span className="text-gray-300 text-xs sm:text-sm font-semibold">Enable iframe preview?</span>
-        <button
-          type="button"
-          onClick={() => setForm({ ...form, hasIframe: !form.hasIframe })}
-          className={`w-12 h-6 rounded-full transition-colors relative flex items-center shrink-0 ${
-            form.hasIframe ? 'bg-emerald-500' : 'bg-white/[0.1]'
-          }`}
-          style={{ cursor: 'pointer' }}
-        >
-          <div
-            className={`w-5 h-5 rounded-full bg-white absolute top-0.5 transition-transform ${
-              form.hasIframe ? 'translate-x-6' : 'translate-x-0.5'
-            }`}
-          />
-        </button>
-      </div>
-
-      <div>
-        <label className="text-gray-400 text-xs font-bold uppercase tracking-wider mb-2 block">Live API Endpoint (optional)</label>
-        <input
-          value={form.liveApiEndpoint}
-          onChange={(e) => setForm({ ...form, liveApiEndpoint: e.target.value })}
-          className={inputClass}
-          placeholder="https://api.example.com/health"
-        />
-      </div>
-
-      <div>
-        <label className="text-gray-400 text-xs font-bold uppercase tracking-wider mb-2 block">Tags (comma-separated)</label>
-        <input
-          value={form.tags}
-          onChange={(e) => setForm({ ...form, tags: e.target.value })}
-          className={inputClass}
-          placeholder="React, Node.js, Discord"
-        />
-      </div>
-
-      <div>
-        <label className="text-gray-400 text-xs font-bold uppercase tracking-wider mb-2 block">Description (Markdown)</label>
-        <textarea
-          value={form.description}
-          onChange={(e) => setForm({ ...form, description: e.target.value })}
-          className={`${inputClass} h-36 resize-none font-mono text-xs`}
-          placeholder="## Project Title&#10;&#10;Description..."
-        />
-      </div>
-
-      <div className="flex gap-3 pt-3">
-        <Button
-          type="submit"
-          className="flex-1 py-3 font-semibold text-sm rounded-xl h-11"
-        >
-          {project ? 'Update' : 'Create'} Project context
-        </Button>
-        <Button
-          type="button"
-          variant="neumorphic"
-          onClick={onCancel}
-          className="px-5 font-semibold text-sm rounded-xl h-11"
-        >
-          Cancel
-        </Button>
-      </div>
-    </form>
-  );
-}
+import { ShieldAlert, Activity, Wifi, HardDrive, Users, Eye } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 export default function ControlPanel({ windowId }: { windowId: string }) {
-  const isAdmin = useOSStore((s) => s.isAdminAuthenticated);
-  const [tab, setTab] = useState<Tab>('list');
-  const [editProject, setEditProject] = useState<Project | undefined>();
+  const isAdminAuthenticated = useOSStore(s => s.isAdminAuthenticated);
+  const initSpectator = useOSStore(s => s.initSpectator);
+  
+  // Dummy active sessions
+  const [activeSessions] = useState(['sess_alpha_92X', 'sess_beta_41Y']);
 
-  if (!isAdmin) {
+  if (!isAdminAuthenticated) {
     return (
-      <div className="flex items-center justify-center h-full bg-gray-950/50 select-none">
-        <div className="text-center p-6 bg-black/30 border border-white/5 backdrop-blur-md rounded-3xl max-w-xs shadow-2xl">
-          <div className="text-4xl mb-4">🔒</div>
-          <p className="text-gray-200 text-base font-bold">Access Denied</p>
-          <p className="text-gray-500 text-xs mt-2 leading-relaxed">
-            Please run the elevated <code className="text-cyan-400 font-bold bg-white/5 px-1.5 py-0.5 rounded font-mono">sudo login admin</code> shell command inside the Terminal.
-          </p>
-        </div>
+      <div className="w-full h-full bg-black flex flex-col items-center justify-center text-red-500 font-mono relative overflow-hidden select-none">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: [0, 1, 0, 0.5, 1], x: [-5, 5, -5, 5, 0] }}
+          transition={{ duration: 0.5, repeat: Infinity, repeatType: "mirror" }}
+          className="flex flex-col items-center gap-4 z-10"
+        >
+          <ShieldAlert className="w-24 h-24 text-red-600 animate-pulse" />
+          <h1 className="text-4xl font-extrabold tracking-widest drop-shadow-[0_0_15px_rgba(220,38,38,0.8)] uppercase">Access Denied</h1>
+          <p className="text-sm tracking-[0.2em] text-red-400">Unauthorized Personnel Detected</p>
+        </motion.div>
+        
+        {/* CRT Scanline effect */}
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] bg-[length:100%_4px,3px_100%] z-20 pointer-events-none opacity-20" />
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col h-full bg-gray-950/30 select-none" data-testid="control-panel">
-      {/* Tab bar */}
-      <div className="shrink-0 flex items-center justify-between p-3 border-b border-white/[0.06] bg-black/25">
-        <div className="flex items-center gap-1.5 px-2">
-          <span className="text-amber-400 text-xs">🔒</span>
-          <span className="text-amber-400 text-xs font-bold uppercase tracking-wider">D1 Panel</span>
+    <div className="w-full h-full bg-zinc-950/60 backdrop-blur-2xl text-emerald-400 font-mono p-6 flex flex-col gap-6 overflow-y-auto select-none">
+      <div className="flex items-center justify-between border-b border-emerald-500/20 pb-4">
+        <div className="flex items-center gap-3">
+          <Activity className="w-8 h-8 text-emerald-500 animate-pulse" />
+          <h2 className="text-2xl font-black tracking-tight text-white drop-shadow-[0_0_10px_rgba(16,185,129,0.5)]">COMMAND CENTER</h2>
         </div>
+        <div className="px-3 py-1 bg-emerald-500/10 border border-emerald-500/30 rounded-full text-xs font-bold flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,1)] animate-pulse" />
+          EDGE SECURE
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Metrics */}
+        <div className="bg-black/40 border border-white/5 rounded-2xl p-5 flex flex-col gap-2 relative overflow-hidden group">
+          <div className="absolute -right-4 -top-4 w-24 h-24 bg-emerald-500/5 rounded-full blur-2xl group-hover:bg-emerald-500/10 transition-colors" />
+          <div className="flex items-center gap-2 text-zinc-400 text-xs font-bold tracking-wider mb-2">
+            <Wifi className="w-4 h-4 text-emerald-500" /> Edge Latency
+          </div>
+          <div className="text-3xl font-black text-white">12<span className="text-lg text-emerald-500/50">ms</span></div>
+          <div className="text-[10px] text-emerald-500">Cloudflare FRA-1</div>
+        </div>
+
+        <div className="bg-black/40 border border-white/5 rounded-2xl p-5 flex flex-col gap-2 relative overflow-hidden group">
+          <div className="absolute -right-4 -top-4 w-24 h-24 bg-blue-500/5 rounded-full blur-2xl group-hover:bg-blue-500/10 transition-colors" />
+          <div className="flex items-center gap-2 text-zinc-400 text-xs font-bold tracking-wider mb-2">
+            <Users className="w-4 h-4 text-blue-500" /> Active WebSockets
+          </div>
+          <div className="text-3xl font-black text-white">1,402</div>
+          <div className="text-[10px] text-blue-500">Pusher Global Cluster</div>
+        </div>
+
+        <div className="bg-black/40 border border-white/5 rounded-2xl p-5 flex flex-col gap-2 relative overflow-hidden group">
+          <div className="absolute -right-4 -top-4 w-24 h-24 bg-amber-500/5 rounded-full blur-2xl group-hover:bg-amber-500/10 transition-colors" />
+          <div className="flex items-center gap-2 text-zinc-400 text-xs font-bold tracking-wider mb-2">
+            <HardDrive className="w-4 h-4 text-amber-500" /> R2 Storage
+          </div>
+          <div className="text-3xl font-black text-white">42<span className="text-lg text-amber-500/50">%</span></div>
+          <div className="text-[10px] text-amber-500">2.1TB / 5.0TB Used</div>
+        </div>
+      </div>
+
+      <div className="flex-1 bg-black/40 border border-white/5 rounded-2xl p-6 flex flex-col gap-4">
+        <h3 className="text-lg font-bold text-white flex items-center gap-2">
+          <Users className="w-5 h-5 text-emerald-500" /> Active Guest Sessions
+        </h3>
         
-        <div className="flex items-center gap-2">
-          {(['list', 'add'] as Tab[]).map((t) => (
-            <Button
-              key={t}
-              onClick={() => { setTab(t); setEditProject(undefined); }}
-              variant={tab === t ? 'default' : 'neumorphic'}
-              className="h-8.5 px-3.5 text-xs font-semibold rounded-lg"
-            >
-              {t === 'list' ? 'Projects' : 'Add New'}
-            </Button>
+        <div className="flex flex-col gap-3">
+          {activeSessions.map((sess) => (
+            <div key={sess} className="flex items-center justify-between p-4 bg-zinc-900/50 border border-white/5 rounded-xl hover:border-emerald-500/30 transition-colors group">
+              <div className="flex flex-col gap-1">
+                <span className="text-white font-bold tracking-wide">{sess}</span>
+                <span className="text-xs text-zinc-500">Connected 4 mins ago • IP: 104.28.***.***</span>
+              </div>
+              <button 
+                onClick={() => initSpectator(sess)}
+                className="px-4 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 font-bold text-sm rounded-lg border border-emerald-500/20 transition-all flex items-center gap-2 hover:shadow-[0_0_15px_rgba(16,185,129,0.3)] hover:scale-105 active:scale-95 cursor-pointer"
+              >
+                <Eye className="w-4 h-4" /> Live Spectate
+              </button>
+            </div>
           ))}
         </div>
       </div>
 
-      {/* Content */}
-      {tab === 'list' && !editProject && (
-        <ScrollArea className="flex-1">
-          <div className="flex flex-col p-4 gap-3">
-            {/* D1 Schema Drizzle code view */}
-            <div className="p-4 rounded-2xl bg-cyan-500/[0.03] border border-cyan-500/[0.1] shadow-inner mb-2">
-              <p className="text-cyan-400 text-[10px] font-mono font-bold">
-                {`/* Drizzle ORM — D1 SQLite Database Schema */`}
-              </p>
-              <p className="text-cyan-400/70 text-[10px] font-mono mt-1 leading-relaxed">
-                {`-- projects(id, user, title, desc, url, has_iframe, live_api_endpoint)`}
-              </p>
-            </div>
-
-            {PROJECTS.map((p) => (
-              <div
-                key={p.id}
-                className="flex items-center gap-3.5 p-4 rounded-2xl bg-white/[0.02] border border-white/[0.06] hover:border-white/10 transition-colors"
-              >
-                <span className="text-2xl shadow-sm shrink-0">{p.iconUrl}</span>
-                <div className="flex-1 min-w-0">
-                  <h4 className="text-white text-sm sm:text-base font-bold truncate tracking-tight">{p.title}</h4>
-                  <p className="text-gray-500 text-[10px] font-mono mt-0.5">{p.userId}</p>
-                </div>
-                <Button
-                  onClick={() => { setEditProject(p); setTab('edit'); }}
-                  variant="neumorphic"
-                  className="h-9 px-3 text-xs font-semibold rounded-xl"
-                >
-                  Edit
-                </Button>
-              </div>
-            ))}
-          </div>
-        </ScrollArea>
-      )}
-
-      {(tab === 'add' || tab === 'edit') && (
-        <ProjectForm
-          project={editProject}
-          onSave={(data) => {
-            toast.success(editProject ? 'Project context updated successfully (mock D1)!' : 'New project context created (mock D1)!');
-            setTab('list');
-            setEditProject(undefined);
-          }}
-          onCancel={() => { setTab('list'); setEditProject(undefined); }}
-        />
-      )}
     </div>
   );
 }
-
