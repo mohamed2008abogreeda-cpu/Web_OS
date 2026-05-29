@@ -63,7 +63,7 @@ export default function MacWindow({ window: win }: MacWindowProps) {
   if (win.isMaximized) {
     return (
       <div 
-        className="fixed inset-0 z-50 flex flex-col bg-black/40 backdrop-blur-3xl shadow-2xl rounded-none pointer-events-auto"
+        className="fixed top-6 left-0 right-0 bottom-24 z-50 flex flex-col bg-black/40 backdrop-blur-3xl shadow-2xl rounded-xl pointer-events-auto border border-white/10"
         onMouseDown={handleFocus}
       >
         <div className="h-10 bg-white/10 border-b border-white/5 flex items-center select-none relative backdrop-blur-md">

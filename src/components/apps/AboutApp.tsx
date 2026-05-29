@@ -30,10 +30,11 @@ const itemVariants = {
 };
 
 import { useOSStore } from '@/store/useOSStore';
+import { USERS } from '@/lib/mockData';
 
 export default function AboutApp() {
   const { currentUser } = useOSStore();
-  const user = currentUser;
+  const user = currentUser ? USERS[currentUser] : null;
 
   return (
     <div className="w-full h-full overflow-y-auto p-6 md:p-8 bg-black/60 text-white select-none">

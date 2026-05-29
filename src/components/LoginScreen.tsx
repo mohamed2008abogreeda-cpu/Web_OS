@@ -7,7 +7,7 @@ import { User, ArrowRight } from 'lucide-react';
 
 const OS_USERS = [
   { id: 'Mohammed', name: 'Mohamed Mahmoud Abo Greada', env: 'Foggy (Linux)' },
-  { id: 'Moamen', name: 'Mohamed Hany', env: 'Larvil (macOS)' },
+  { id: 'Moamen', name: 'Moamen', env: 'Larvil (macOS)' },
   { id: 'Team', name: 'Team', env: 'Windows 11' },
 ] as const;
 

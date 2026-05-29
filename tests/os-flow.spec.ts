@@ -45,11 +45,11 @@ test.describe('Tri-System OS Flow - Linux Environment', () => {
     // Click "Applications" dropdown
     await page.getByText('Applications').click();
 
-    // Click "Root Terminal" in the dropdown menu
-    await page.getByText('Root Terminal').click();
+    // Click "Terminal" in the dropdown menu (ensure we click the one inside the absolute menu)
+    await page.locator('.absolute.top-7.left-0 button', { hasText: /^Terminal$/ }).click();
 
-    // Verify the window appears (we can look for the window title "Root Terminal" inside the window header)
-    const windowHeader = page.locator('.linux-drag-handle', { hasText: 'Root Terminal' });
+    // Verify the window appears (we can look for the window title "Terminal" inside the window header)
+    const windowHeader = page.locator('.linux-drag-handle', { hasText: 'Terminal' });
     await expect(windowHeader).toBeVisible({ timeout: 5000 });
 
     // Verify Brutalist controls are present (X button inside the window header with red hover class)

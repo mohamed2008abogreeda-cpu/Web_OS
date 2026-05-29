@@ -14,7 +14,7 @@ export default function WinDesktop() {
       {/* Desktop Environment */}
       <div 
         className="absolute inset-0 z-0 w-full h-full bg-cover bg-center bg-no-repeat bg-[#f0f0f0]"
-        style={{ backgroundImage: 'url(/wallpapers/porsche-pink.jpg)' }} 
+        style={{ backgroundImage: 'url(/wallpapers/porsche-pink.jpeg)' }} 
       >
         {/* Desktop Icons (Top-Left to Bottom) */}
         <div className="absolute top-0 left-0 flex flex-col gap-2 p-2 pt-4">
