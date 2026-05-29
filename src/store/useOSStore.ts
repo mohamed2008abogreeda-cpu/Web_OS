@@ -48,14 +48,11 @@ export const useOSStore = create<OSState>((set, get) => ({
     set({ windows, ...(cursor ? { ghostCursor: cursor } : {}) });
   },
 
-  loginUser: (name: UserName) =>
-    set({
-      currentUser: name,
-      bootPhase: 'desktop',
-      windows: [],
-      activeWindowId: null,
-      isStartMenuOpen: false,
-    }),
+  loginUser: (user) => set({ 
+    currentUser: user,
+    windows: [], // مسح جميع النوافذ المفتوحة
+    activeWindowId: null // مسح التركيز
+  }),
 
   logoutUser: () =>
     set({

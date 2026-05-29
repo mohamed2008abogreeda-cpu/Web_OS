@@ -110,20 +110,18 @@ export default function WindowWrapper({ window: win, children }: WindowWrapperPr
       bounds="parent"
     >
       <motion.div
-        className={`
-          flex flex-col w-full h-full overflow-hidden select-none
-          bg-os-bg backdrop-blur-[var(--os-blur)] border-os-border shadow-os rounded-os
-        `}
-        initial={{ scale: 0.95, opacity: 0, y: 10 }}
-        animate={{ 
-          scale: isDragging ? 1.02 : 1, 
-          opacity: 1, 
-          rotate: isDragging ? 1 : 0,
-          y: 0 
+        initial={{ scale: 0.95, opacity: 0, y: 15 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        exit={{ scale: 0.95, opacity: 0, y: 15 }}
+        transition={{ type: "spring", stiffness: 350, damping: 25 }}
+        style={{
+          backdropFilter: "var(--os-blur)",
+          WebkitBackdropFilter: "var(--os-blur)",
         }}
-        exit={{ scale: 0.95, opacity: 0, y: 10 }}
-        transition={{ type: 'spring', stiffness: 240, damping: 25 }}
-        style={{ transformOrigin: 'center center' }}
+        className={`absolute flex flex-col overflow-hidden bg-os-bg shadow-os shadow-os-border rounded-os ${
+          useOSStore.getState().currentUser === "Team" ? "font-mono" : "font-sans"
+        }`}
+        onMouseDown={handleFocus}
       >
         {/* Title bar */}
         <div className="window-drag-handle h-12 flex items-center justify-between px-4 shrink-0 select-none"
