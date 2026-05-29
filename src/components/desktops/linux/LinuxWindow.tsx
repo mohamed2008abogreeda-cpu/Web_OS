@@ -33,10 +33,10 @@ export default function LinuxWindow({ window: win }: LinuxWindowProps) {
   if (win.isMaximized) {
     return (
       <div 
-        className="fixed inset-0 top-7 z-50 flex flex-col bg-[#1a1a1a] shadow-[0_15px_40px_rgba(0,0,0,0.7)] border border-[#333] rounded-none pointer-events-auto"
+        className="fixed inset-0 top-7 z-50 flex flex-col bg-[#121212] border border-[#333] rounded-none pointer-events-auto"
         onMouseDown={handleFocus}
       >
-        <div className="h-8 bg-[#252526] border-b border-[#111] flex items-center justify-between px-3 select-none">
+        <div className="h-8 bg-[#202020] border-b border-[#333] flex items-center justify-between px-3 select-none">
           <div className="flex items-center gap-2">
             {AppIcon && <AppIcon className="w-4 h-4 text-zinc-300" />}
             <span className="text-[13px] text-zinc-300 font-sans tracking-wide font-medium">{win.title}</span>
@@ -53,7 +53,7 @@ export default function LinuxWindow({ window: win }: LinuxWindowProps) {
             </button>
           </div>
         </div>
-        <div className="flex-1 overflow-hidden relative">
+        <div className="flex-1 overflow-hidden relative bg-[#121212]">
           <AppRenderer componentName={win.component as string} windowId={win.id} />
         </div>
       </div>
@@ -79,10 +79,10 @@ export default function LinuxWindow({ window: win }: LinuxWindowProps) {
       bounds="parent"
     >
       <div
-        className="relative flex flex-col w-full h-full overflow-hidden bg-[#1a1a1a] shadow-[0_15px_40px_rgba(0,0,0,0.7)] border border-[#333] rounded-none font-sans"
+        className="relative flex flex-col w-full h-full overflow-hidden bg-[#121212] shadow-2xl border border-[#333] rounded-none font-sans"
         onMouseDown={handleFocus}
       >
-        <div className="linux-drag-handle h-8 bg-[#252526] border-b border-[#111] flex items-center justify-between px-3 select-none">
+        <div className="linux-drag-handle h-8 bg-[#202020] border-b border-[#333] flex items-center justify-between px-3 select-none">
           <div className="flex items-center gap-2">
             {AppIcon && <AppIcon className="w-4 h-4 text-zinc-300" />}
             <span className="text-[13px] text-zinc-300 font-sans tracking-wide font-medium">{win.title}</span>
@@ -99,7 +99,7 @@ export default function LinuxWindow({ window: win }: LinuxWindowProps) {
             </button>
           </div>
         </div>
-        <div className="flex-1 overflow-hidden relative">
+        <div className="flex-1 overflow-hidden relative bg-[#121212]">
           {isDragging && <div className="absolute inset-0 z-[999] bg-transparent" />}
           <AppRenderer componentName={win.component as string} windowId={win.id} />
         </div>
