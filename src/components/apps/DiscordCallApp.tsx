@@ -7,11 +7,11 @@ import WinTeams from './windows/WinTeams';
 export default function DiscordCallApp() {
   const { currentUser } = useOSStore();
 
-  if (currentUser?.id === 'user-1') {
+  if (currentUser === 'Mohammed') {
     return <LinuxComms />;
   }
   
-  if (currentUser?.id === 'user-2') {
+  if (currentUser === 'Moamen') {
     return <MacFaceTime />;
   }
 

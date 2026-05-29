@@ -7,11 +7,11 @@ import WinSettings from './windows/WinSettings';
 export default function SettingsApp() {
   const { currentUser } = useOSStore();
 
-  if (currentUser?.id === 'user-1') {
+  if (currentUser === 'Mohammed') {
     return <LinuxSettings />;
   }
   
-  if (currentUser?.id === 'user-2') {
+  if (currentUser === 'Moamen') {
     return <MacSettings />;
   }
 

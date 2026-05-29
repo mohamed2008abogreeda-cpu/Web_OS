@@ -7,11 +7,11 @@ import WinExplorer from './windows/WinExplorer';
 export default function ProjectViewer() {
   const { currentUser } = useOSStore();
 
-  if (currentUser?.id === 'user-1') {
+  if (currentUser === 'Mohammed') {
     return <LinuxFiles />;
   }
   
-  if (currentUser?.id === 'user-2') {
+  if (currentUser === 'Moamen') {
     return <MacFinder />;
   }
 

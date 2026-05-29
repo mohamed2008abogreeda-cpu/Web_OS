@@ -7,11 +7,11 @@ import WinTerminal from './windows/WinTerminal';
 export default function TerminalApp() {
   const { currentUser } = useOSStore();
 
-  if (currentUser?.id === 'user-1') {
+  if (currentUser === 'Mohammed') {
     return <LinuxTerminal />;
   }
   
-  if (currentUser?.id === 'user-2') {
+  if (currentUser === 'Moamen') {
     return <MacTerminal />;
   }
 
