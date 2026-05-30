@@ -16,6 +16,33 @@ function asciiSafe(str: string): string {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
+    
+    // Cloudflare Turnstile CAPTCHA Verification
+    const turnstileToken = body['cf-turnstile-response'];
+    const turnstileSecret = process.env.TURNSTILE_SECRET_KEY || '1x0000000000000000000000000000000AA';
+
+    if (!turnstileToken) {
+      return NextResponse.json(
+        { success: false, error: 'Security verification failed: CAPTCHA token is missing. Please solve Turnstile.' },
+        { status: 400 }
+      );
+    }
+
+    const verifyRes = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: `secret=${encodeURIComponent(turnstileSecret)}&response=${encodeURIComponent(String(turnstileToken))}`
+    });
+
+    const verifyData = await verifyRes.json() as any;
+
+    if (!verifyData.success) {
+      return NextResponse.json(
+        { success: false, error: 'Security verification failed: Invalid Turnstile CAPTCHA token.' },
+        { status: 401 }
+      );
+    }
+
     const { caller, environment, roomId, message: customMessage, title, tags, priority } = body;
 
     let finalMessage = "";

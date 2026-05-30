@@ -6,6 +6,15 @@ initOpenNextCloudflareForDev();
 
 const nextConfig: NextConfig = {
   allowedDevOrigins: ["webos.foggystorm.dpdns.org", "192.168.1.6"],
+  images: {
+    unoptimized: true,
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'assets.yourdomain.com',
+      },
+    ],
+  },
 };
 
 export default nextConfig;

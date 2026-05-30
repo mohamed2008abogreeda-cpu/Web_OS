@@ -58,7 +58,9 @@ export async function GET(request: NextRequest) {
           };
         });
 
-        return NextResponse.json({ success: true, projects: formattedProjects });
+        const response = NextResponse.json({ success: true, projects: formattedProjects });
+        response.headers.set('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=30');
+        return response;
       }
     }
 
@@ -77,7 +79,9 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({ success: true, projects: fallbackProjects });
+    const response = NextResponse.json({ success: true, projects: fallbackProjects });
+    response.headers.set('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=30');
+    return response;
   } catch (error: any) {
     return NextResponse.json(
       { success: false, error: error.message || "Unknown error occurred" },
@@ -122,8 +126,9 @@ export async function POST(request: NextRequest) {
         httpMetadata: { contentType: file.type },
       });
 
-      // Point image icon to the internal R2 retrieval URL path
-      iconUrl = `/api/storage?key=${key}`;
+      // Point image icon directly to the high-speed public R2 CDN/bucket subdomain
+      const assetsDomain = process.env.NEXT_PUBLIC_ASSETS_DOMAIN || "https://assets.yourdomain.com";
+      iconUrl = `${assetsDomain}/${key}`;
     }
 
     // 2. Insert SQL Record to D1 Database
@@ -184,7 +189,8 @@ export async function PUT(request: NextRequest) {
         httpMetadata: { contentType: file.type },
       });
 
-      iconUrl = `/api/storage?key=${key}`;
+      const assetsDomain = process.env.NEXT_PUBLIC_ASSETS_DOMAIN || "https://assets.yourdomain.com";
+      iconUrl = `${assetsDomain}/${key}`;
     }
 
     // 2. Update SQL Record in D1

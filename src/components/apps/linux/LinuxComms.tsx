@@ -15,6 +15,7 @@ export default function LinuxComms() {
   const [activeRoomId, setActiveRoomId] = useState<string>('');
   const [micMuted, setMicMuted] = useState(false);
   const [videoMuted, setVideoMuted] = useState(true);
+  const [turnstileToken, setTurnstileToken] = useState<string>('');
   
   const {
     status,
@@ -77,6 +78,55 @@ export default function LinuxComms() {
     return () => clearInterval(interval);
   }, []);
 
+  // Load and mount Cloudflare Turnstile CAPTCHA explicitly
+  useEffect(() => {
+    if (phase !== 'idle') return;
+
+    // 1. Inject script if absent
+    if (!document.getElementById('cloudflare-turnstile-script')) {
+      const script = document.createElement('script');
+      script.id = 'cloudflare-turnstile-script';
+      script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+      script.async = true;
+      script.defer = true;
+      document.body.appendChild(script);
+    }
+
+    // 2. Render Widget explicitly once Turnstile is present
+    const renderWidget = () => {
+      const ts = (window as any).turnstile;
+      const container = document.getElementById('turnstile-widget');
+      if (ts && container && container.innerHTML === '') {
+        ts.render('#turnstile-widget', {
+          sitekey: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || '1x0000000000000000000000000000000AA',
+          callback: (token: string) => {
+            setTurnstileToken(token);
+          },
+          'expired-callback': () => {
+            setTurnstileToken('');
+          },
+          'error-callback': () => {
+            setTurnstileToken('');
+          }
+        });
+      }
+    };
+
+    if (typeof window !== 'undefined') {
+      if ((window as any).turnstile) {
+        renderWidget();
+      } else {
+        const interval = setInterval(() => {
+          if ((window as any).turnstile) {
+            renderWidget();
+            clearInterval(interval);
+          }
+        }, 100);
+        return () => clearInterval(interval);
+      }
+    }
+  }, [phase]);
+
   const handleCall = async () => {
     if (phase !== 'idle') return;
 
@@ -101,7 +151,8 @@ export default function LinuxComms() {
               body: JSON.stringify({
                 caller: 'Visitor',
                 environment: 'Linux/Kali',
-                roomId
+                roomId,
+                'cf-turnstile-response': turnstileToken
               }),
               signal: controller.signal
             });
@@ -281,15 +332,27 @@ export default function LinuxComms() {
             </button>
           </>
         ) : (
-          <button
-            onClick={handleCall}
-            disabled={phase !== 'idle'}
+          <div className="flex flex-col items-center gap-4 w-full">
+            {/* Turnstile Security Challenge */}
+            {phase === 'idle' && (
+              <div className="flex flex-col items-center justify-center p-3 mb-2 bg-black border border-emerald-950/80 rounded relative z-20 w-full shadow-inner max-w-sm">
+                <div className="text-[9px] text-emerald-400 font-bold mb-2 flex items-center gap-1.5 uppercase tracking-wider">
+                  <Shield className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
+                  <span>SOLVE SECURITY CHALLENGE TO PING ADMIN</span>
+                </div>
+                <div id="turnstile-widget" className="min-h-[65px] flex items-center justify-center"></div>
+              </div>
+            )}
+
+            <button
+              onClick={handleCall}
+              disabled={phase !== 'idle' || !turnstileToken}
             className={`px-6 py-4 font-bold tracking-[0.2em] transition-all flex items-center gap-3 border ${
               phase === 'connected'
                 ? 'border-emerald-500 text-emerald-500 bg-emerald-500/10 cursor-default shadow-[0_0_15px_rgba(16,185,129,0.2)]'
                 : phase !== 'idle'
                 ? 'border-yellow-500 text-yellow-500 bg-yellow-500/10 cursor-not-allowed'
-                : 'border-emerald-500 text-emerald-500 hover:bg-emerald-500/10 hover:shadow-[0_0_15px_rgba(16,185,129,0.4)] cursor-pointer'
+                : 'border-emerald-500 text-emerald-500 hover:bg-emerald-500/10 hover:shadow-[0_0_15px_rgba(16,185,129,0.4)] cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed'
             }`}
           >
             {phase === 'connected' ? (
@@ -309,7 +372,8 @@ export default function LinuxComms() {
               </>
             )}
           </button>
-        )}
+        </div>
+      )}
       </div>
 
       {/* Hidden Audio element for remote audio stream to bypass autoplay policy */}
