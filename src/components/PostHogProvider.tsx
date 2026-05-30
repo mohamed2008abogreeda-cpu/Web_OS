@@ -43,6 +43,23 @@ function PostHogPageview() {
 }
 
 export function PostHogProvider({ children }: { children: React.ReactNode }) {
+  // Session Identification side effect executing strictly client-side to prevent hydration mismatches
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      let sessionId = localStorage.getItem('webos_posthog_session_id') || '';
+      if (!sessionId) {
+        sessionId = Math.random().toString(36).substring(2, 15) + '-' + Date.now();
+        localStorage.setItem('webos_posthog_session_id', sessionId);
+      }
+      
+      // Correlate telemetry security events and session recording using identified profiling
+      posthog.identify(sessionId, {
+        environment: 'Linux_Brutalist',
+        viewport: window.innerWidth,
+      });
+    }
+  }, []);
+
   return (
     <PHProvider client={posthog}>
       <Suspense fallback={null}>
