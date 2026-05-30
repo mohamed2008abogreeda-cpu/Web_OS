@@ -8,13 +8,23 @@
 # ============================================================
 
 name = "web-os-portfolio"
-main = ".open-next/worker.js"
+main = "worker.ts"
 compatibility_date = "2024-12-30"
 compatibility_flags = ["nodejs_compat"]
 
 [assets]
 directory = ".open-next/assets"
 binding = "ASSETS"
+
+# ── Durable Objects (Native Edge WebSockets) ───────────────────
+[durable_objects]
+bindings = [
+  { name = "SYNC_ROOM", class_name = "SyncRoom" }
+]
+
+[[migrations]]
+tag = "v1"
+new_classes = ["SyncRoom"]
 
 # ── Non-sensitive environment variables ──────────────────
 [vars]

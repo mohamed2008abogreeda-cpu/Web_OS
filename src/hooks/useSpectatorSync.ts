@@ -2,26 +2,21 @@
 
 import { useEffect, useRef } from 'react';
 import { useOSStore } from '@/store/useOSStore';
-import Pusher from 'pusher-js';
 
 /**
  * Visitor Spectator Sync Hook (Broadcaster & bi-directional Command Listener)
  * 
  * Captures visitor coordinates and active window state, applying highly optimized
- * 1000ms strict throttling and 20px Euclidean delta-distance checks to prevent API flooding.
+ * 1000ms strict throttling and 20px Euclidean delta-distance checks to prevent network flooding.
  * 
- * Normalized coordinates logic:
- *   - visitor.x / visitor.viewportWidth represents relative percentage width.
- *   - visitor.y / visitor.viewportHeight represents relative percentage height.
- * 
- * Subscribes to unique bi-directional visitor channels (e.g. visitor-channel-${sessionId})
- * to receive and process remote admin interventions in real-time.
+ * Swapped out Pusher in favor of high-performance native Cloudflare WebSockets using Durable Objects.
  */
 export function useSpectatorSync() {
   const lastUpdate = useRef<number>(0);
   const previousX = useRef<number>(0);
   const previousY = useRef<number>(0);
   const previousWindowHash = useRef<string>('');
+  const socketRef = useRef<WebSocket | null>(null);
 
   useEffect(() => {
     const isSpectating = useOSStore.getState().isSpectating;
@@ -30,44 +25,75 @@ export function useSpectatorSync() {
     // Admins do not broadcast, they only spectate
     if (isSpectating) return;
 
-    // 1. Establish Bi-directional Pusher listener for Admin interventions
-    const key = process.env.NEXT_PUBLIC_PUSHER_KEY || 'app-key';
-    const cluster = process.env.NEXT_PUBLIC_PUSHER_CLUSTER || 'us2';
-    
-    const pusher = new Pusher(key, {
-      cluster,
-      forceTLS: true,
-    });
+    let reconnectDelay = 1000;
+    let isCleanup = false;
 
-    const channelName = `visitor-channel-${sessionId}`;
-    const channel = pusher.subscribe(channelName);
+    // Establish persistent, native WebSocket connection with exponential backoff reconnection
+    const connect = () => {
+      if (isCleanup) return;
 
-    // Dynamic admin-to-visitor command dispatcher
-    channel.bind('admin-command', (data: { type: string; payload?: any }) => {
-      if (!data || !data.type) return;
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const host = window.location.host;
+      const wsUrl = `${protocol}//${host}/api/sync?role=visitor&sessionId=${sessionId}`;
 
-      const store = useOSStore.getState();
+      const ws = new WebSocket(wsUrl);
+      socketRef.current = ws;
 
-      if (data.type === "FORCE_BSOD") {
-        if (store.setBsod) store.setBsod(true);
-      } else if (data.type === "OPEN_MODAL") {
-        const appId = data.payload?.appId;
-        if (appId) {
-          const { SYSTEM_APPS } = require('@/lib/mockData');
-          const { LINUX_APPS } = require('@/components/desktops/linux/LinuxDesktop');
-          
-          const app = 
-            SYSTEM_APPS.find((a: any) => a.id === appId) || 
-            LINUX_APPS.find((a: any) => a.id === appId);
+      ws.onopen = () => {
+        console.log('[SpectatorSync WS] Connected as visitor:', sessionId);
+        reconnectDelay = 1000; // Reset reconnection delay on successful connection
+      };
 
-          if (app) {
-            store.openWindow(app);
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+
+          // Handle incoming admin remote interventions in real-time
+          if (data.type === 'admin-command') {
+            const command = data.payload;
+            if (!command || !command.type) return;
+
+            const store = useOSStore.getState();
+
+            if (command.type === "FORCE_BSOD") {
+              if (store.setBsod) store.setBsod(true);
+            } else if (command.type === "OPEN_MODAL") {
+              const appId = command.payload?.appId;
+              if (appId) {
+                const { SYSTEM_APPS } = require('@/lib/mockData');
+                const { LINUX_APPS } = require('@/components/desktops/linux/LinuxDesktop');
+                
+                const app = 
+                  SYSTEM_APPS.find((a: any) => a.id === appId) || 
+                  LINUX_APPS.find((a: any) => a.id === appId);
+
+                if (app) {
+                  store.openWindow(app);
+                }
+              }
+            } else if (command.type === "SWITCH_USER") {
+              store.switchUser();
+            }
           }
+        } catch (err) {
+          console.warn('[SpectatorSync WS] Message processing failed:', err);
         }
-      } else if (data.type === "SWITCH_USER") {
-        store.switchUser();
-      }
-    });
+      };
+
+      ws.onclose = () => {
+        if (isCleanup) return;
+        console.log(`[SpectatorSync WS] Disconnected. Reconnecting in ${reconnectDelay}ms...`);
+        setTimeout(connect, reconnectDelay);
+        reconnectDelay = Math.min(reconnectDelay * 2, 30000); // Backoff up to 30 seconds
+      };
+
+      ws.onerror = (err) => {
+        console.error('[SpectatorSync WS] Socket error:', err);
+        ws.close();
+      };
+    };
+
+    connect();
 
     // 2. Track Mouse Movement and Broadcast coordinates
     const handleMouseMove = (e: MouseEvent) => {
@@ -94,32 +120,44 @@ export function useSpectatorSync() {
       previousWindowHash.current = windowsHash;
 
       // Mathematical Normalization Payload
-      const payload = JSON.stringify({
-        sessionId,
+      const payload = {
         x: e.clientX,
         y: e.clientY,
         viewportWidth: window.innerWidth,
         viewportHeight: window.innerHeight,
         activeWindows,
-      });
+      };
 
-      // Secure async edge-compliant fetch transaction (fire-and-forget)
-      fetch('/api/sync', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: payload
-      }).catch(err => {
-        console.warn('[SpectatorSync Broadcaster] Fetch sync dispatch failed:', err);
-      });
+      const socket = socketRef.current;
+      if (socket && socket.readyState === WebSocket.OPEN) {
+        // Fast path: send over active WebSocket connection with zero HTTP overhead
+        socket.send(JSON.stringify({
+          type: 'sync',
+          payload
+        }));
+      } else {
+        // Graceful fallback: post to edge route if WebSocket is establishing or offline
+        fetch('/api/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sessionId,
+            ...payload
+          })
+        }).catch(err => {
+          console.warn('[SpectatorSync WS Fallback] Fetch sync dispatch failed:', err);
+        });
+      }
     };
 
     window.addEventListener('mousemove', handleMouseMove);
 
     return () => {
+      isCleanup = true;
       window.removeEventListener('mousemove', handleMouseMove);
-      channel.unbind_all();
-      channel.unsubscribe();
-      pusher.disconnect();
+      if (socketRef.current) {
+        socketRef.current.close();
+      }
     };
   }, []);
 }

@@ -1,41 +1,73 @@
 // ============================================================
-// API: POST /api/sync — Broadcast state to spectating admin via Pusher
-// Designed for Cloudflare Pages with Node.js compatibility shims.
-// Accepts raw coordinates normalized mathematically on the client.
+// API: /api/sync — Bidirectional State Sync Router
+// Handles GET (native WebSocket upgrades to Durable Object)
+// Handles POST (HTTP fallback from visitors during connection setup)
 // ============================================================
 import { NextResponse } from "next/server";
-import { triggerPusherEdge } from "@/lib/pusherEdge";
+
+export async function GET(req: Request) {
+  try {
+    // 1. Upgrade request to native Edge WebSocket if Upgrade header is present
+    if (req.headers.get("Upgrade") !== "websocket") {
+      return new Response("Expected Upgrade: websocket", { status: 426 });
+    }
+
+    const doNamespace = process.env.SYNC_ROOM;
+    if (!doNamespace) {
+      return new Response("SYNC_ROOM Durable Object binding not configured", { status: 500 });
+    }
+
+    // Connect to a single global Durable Object instance for real-time synchronization
+    const id = doNamespace.idFromName("global");
+    const stub = doNamespace.get(id);
+
+    return stub.fetch(req);
+  } catch (err: any) {
+    console.error("[WebSocket Sync Upgrade Error]:", err.message);
+    return new Response(err.message || "Failed to upgrade WebSocket", { status: 500 });
+  }
+}
 
 export async function POST(req: Request) {
   try {
     const { sessionId, x, y, viewportWidth, viewportHeight, activeWindows } = await req.json();
 
-    // Validate: x,y and viewports must be numbers, activeWindows must be an array
+    // 2. Validate payload attributes
     if (
       typeof x !== 'number' || typeof y !== 'number' ||
       typeof viewportWidth !== 'number' || typeof viewportHeight !== 'number' ||
       !Array.isArray(activeWindows)
     ) {
       return NextResponse.json(
-        { error: "Invalid payload: x, y, viewports must be numbers and activeWindows must be an array" },
+        { error: "Invalid payload: coordinates and activeWindows must match normalized schema" },
         { status: 400 }
       );
     }
 
-    // Broadcast the coordinates and window state to Pusher channel
-    await triggerPusherEdge("os-sync-channel", "os-state-update", {
-      sessionId,
-      x,
-      y,
-      viewportWidth,
-      viewportHeight,
-      activeWindows,
-    });
+    const doNamespace = process.env.SYNC_ROOM;
+    if (doNamespace) {
+      const id = doNamespace.idFromName("global");
+      const stub = doNamespace.get(id);
+
+      // Route the HTTP fallback sync command to the Durable Object via internal loopback
+      await stub.fetch(new Request("http://internal/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionId,
+          x,
+          y,
+          viewportWidth,
+          viewportHeight,
+          activeWindows,
+        })
+      }));
+    }
 
     return NextResponse.json({ success: true });
-  } catch (error: unknown) {
+  } catch (error: any) {
     const message = error instanceof Error ? error.message : "Unknown error";
-    console.error("Pusher sync error:", message);
+    console.error("[HTTP Sync Fallback Error]:", message);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

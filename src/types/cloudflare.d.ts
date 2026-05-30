@@ -90,12 +90,30 @@ interface KVNamespace {
   list(options?: { prefix?: string; limit?: number; cursor?: string }): Promise<{ keys: { name: string; expiration?: number; metadata?: any }[]; list_complete: boolean; cursor?: string }>;
 }
 
+interface DurableObjectStub {
+  fetch(requestOrUrl: Request | string, requestInit?: RequestInit): Promise<Response>;
+}
+
+interface DurableObjectId {
+  toString(): string;
+  equals(other: DurableObjectId): boolean;
+  readonly name?: string;
+}
+
+interface DurableObjectNamespace {
+  newUniqueId(options?: { jurisdiction?: string }): DurableObjectId;
+  idFromName(name: string): DurableObjectId;
+  idFromString(id: string): DurableObjectId;
+  get(id: DurableObjectId): DurableObjectStub;
+}
+
 declare global {
   namespace NodeJS {
     interface ProcessEnv {
       DB?: D1Database;
       BUCKET?: R2Bucket;
       GLOBAL_STATE?: KVNamespace;
+      SYNC_ROOM?: DurableObjectNamespace;
       ADMIN_SECRET?: string;
     }
   }

@@ -1,8 +1,7 @@
 // ============================================================
-// API: POST /api/intervene — Send command payload to visitor Pusher channel
+// API: POST /api/intervene — Send command payload to visitor via Durable Object
 // ============================================================
 import { NextResponse } from "next/server";
-import { triggerPusherEdge } from "@/lib/pusherEdge";
 
 export async function POST(req: Request) {
   try {
@@ -15,13 +14,22 @@ export async function POST(req: Request) {
       );
     }
 
-    const channelName = `visitor-channel-${sessionId}`;
+    const doNamespace = process.env.SYNC_ROOM;
+    if (doNamespace) {
+      const id = doNamespace.idFromName("global");
+      const stub = doNamespace.get(id);
 
-    // Broadcast command to visitor's dedicated channel
-    await triggerPusherEdge(channelName, "admin-command", {
-      type,
-      payload,
-    });
+      // Route the intervention payload to the Durable Object stub via internal loopback
+      await stub.fetch(new Request("http://internal/intervene", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionId,
+          type,
+          payload
+        })
+      }));
+    }
 
     return NextResponse.json({ success: true });
   } catch (error: any) {

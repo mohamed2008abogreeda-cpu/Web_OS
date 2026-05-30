@@ -29,7 +29,6 @@ import {
   Sparkles
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import Pusher from 'pusher-js';
 
 interface VisitorSession {
   sessionId: string;
@@ -104,59 +103,85 @@ function AdminComms() {
     }
   }, [remoteStream]);
 
-  // ─── Real-time Pusher Receiver Subscription ───
+  const socketRef = useRef<WebSocket | null>(null);
+
+  // ─── Real-time Durable Object WebSocket Receiver Subscription ───
   useEffect(() => {
     // Enable state spectator flags for GhostCursor rendering compatibility
     useOSStore.setState({ isSpectating: true, isAdminAuthenticated: true });
 
-    const key = process.env.NEXT_PUBLIC_PUSHER_KEY || 'app-key';
-    const cluster = process.env.NEXT_PUBLIC_PUSHER_CLUSTER || 'us2';
+    let reconnectDelay = 1000;
+    let isCleanup = false;
 
-    const pusher = new Pusher(key, {
-      cluster,
-      forceTLS: true,
-    });
+    const connect = () => {
+      if (isCleanup) return;
 
-    const channel = pusher.subscribe('os-sync-channel');
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const host = window.location.host;
+      const wsUrl = `${protocol}//${host}/api/sync?role=admin`;
 
-    channel.bind('os-state-update', (data: { 
-      sessionId: string;
-      x: number; 
-      y: number; 
-      viewportWidth?: number; 
-      viewportHeight?: number; 
-      activeWindows: any[] 
-    }) => {
-      if (data && data.sessionId) {
-        const vWidth = data.viewportWidth || 1920;
-        const vHeight = data.viewportHeight || 1080;
+      const ws = new WebSocket(wsUrl);
+      socketRef.current = ws;
 
-        setSessions(prev => {
-          const updated = {
-            ...prev,
-            [data.sessionId]: {
-              sessionId: data.sessionId,
-              x: data.x,
-              y: data.y,
-              viewportWidth: vWidth,
-              viewportHeight: vHeight,
-              activeWindows: data.activeWindows || [],
-              lastSeen: Date.now()
-            }
-          };
-          return updated;
-        });
+      ws.onopen = () => {
+        console.log('[AdminComms WS] Connected to Durable Object as admin');
+        reconnectDelay = 1000; // Reset reconnection delay
+      };
 
-        // Auto-select session if none is currently active
-        setActiveSessionId(current => current || data.sessionId);
-      }
-    });
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
 
-    // Cleanup subscription, bindings and state variables on unmount to avoid memory leaks
+          // Handle incoming state/coordinates sync updates from visitors
+          if (data.type === 'os-state-update' && data.sessionId) {
+            const vWidth = data.viewportWidth || 1920;
+            const vHeight = data.viewportHeight || 1080;
+
+            setSessions(prev => {
+              const updated = {
+                ...prev,
+                [data.sessionId]: {
+                  sessionId: data.sessionId,
+                  x: data.x,
+                  y: data.y,
+                  viewportWidth: vWidth,
+                  viewportHeight: vHeight,
+                  activeWindows: data.activeWindows || [],
+                  lastSeen: Date.now()
+                }
+              };
+              return updated;
+            });
+
+            // Auto-select session if none is currently active
+            setActiveSessionId(current => current || data.sessionId);
+          }
+        } catch (err) {
+          console.warn('[AdminComms WS] Error parsing message:', err);
+        }
+      };
+
+      ws.onclose = () => {
+        if (isCleanup) return;
+        console.log(`[AdminComms WS] Disconnected. Reconnecting in ${reconnectDelay}ms...`);
+        setTimeout(connect, reconnectDelay);
+        reconnectDelay = Math.min(reconnectDelay * 2, 30000); // Backoff up to 30s
+      };
+
+      ws.onerror = (err) => {
+        console.error('[AdminComms WS] Socket error:', err);
+        ws.close();
+      };
+    };
+
+    connect();
+
+    // Cleanup subscription and state variables on unmount to avoid memory leaks
     return () => {
-      channel.unbind_all();
-      channel.unsubscribe();
-      pusher.disconnect();
+      isCleanup = true;
+      if (socketRef.current) {
+        socketRef.current.close();
+      }
       useOSStore.setState({ isSpectating: false, isAdminAuthenticated: false, ghostCursor: null });
     };
   }, []);
@@ -200,7 +225,7 @@ function AdminComms() {
     }
   }, [sessions, activeSessionId]);
 
-  // Dispatch Remote Active Intervention commands to the visitor via fetch POST `/api/intervene`
+  // Dispatch Remote Active Intervention commands to the visitor
   const triggerIntervention = async (type: string, payload?: any) => {
     if (!activeSessionId) {
       setLogs(prev => [...prev, `> [${new Date().toLocaleTimeString()}] [WARN] NO ACTIVE SESSION CHOSEN FOR INTERVENTION.`]);
@@ -211,28 +236,49 @@ function AdminComms() {
     const targetSession = activeSessionId;
     setLogs(prev => [...prev, `> [${new Date().toLocaleTimeString()}] [PENDING] DISPATCHING COMMAND: ${type} TO SESSION: ${targetSession.slice(0, 8)}...`]);
 
-    try {
-      const response = await fetch('/api/intervene', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sessionId: targetSession,
-          type,
-          payload
-        })
-      });
-
-      const resData = await response.json();
-
-      if (response.ok && resData.success) {
-        setLogs(prev => [...prev, `> [${new Date().toLocaleTimeString()}] [OK] INTERVENTION ${type} TRANSMITTED TO GUEST.`]);
-      } else {
-        throw new Error(resData.error || 'Server rejected transaction payload');
+    const socket = socketRef.current;
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      try {
+        // Fast path: send over active WebSocket connection with zero latency
+        socket.send(JSON.stringify({
+          type: 'intervene',
+          payload: {
+            sessionId: targetSession,
+            type,
+            payload
+          }
+        }));
+        setLogs(prev => [...prev, `> [${new Date().toLocaleTimeString()}] [OK] INTERVENTION ${type} TRANSMITTED TO GUEST (WS).`]);
+      } catch (err: any) {
+        setLogs(prev => [...prev, `> [${new Date().toLocaleTimeString()}] [FAIL] WS TRANSMISSION ERROR: ${err.message || err}`]);
+      } finally {
+        setIsDispatching(false);
       }
-    } catch (err: any) {
-      setLogs(prev => [...prev, `> [${new Date().toLocaleTimeString()}] [FAIL] INTERVENTION DESYNC ERROR: ${err.message || err}`]);
-    } finally {
-      setIsDispatching(false);
+    } else {
+      // Fallback: make POST request to HTTP API route if WebSocket is establishing or offline
+      try {
+        const response = await fetch('/api/intervene', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sessionId: targetSession,
+            type,
+            payload
+          })
+        });
+
+        const resData = await response.json();
+
+        if (response.ok && resData.success) {
+          setLogs(prev => [...prev, `> [${new Date().toLocaleTimeString()}] [OK] INTERVENTION ${type} TRANSMITTED TO GUEST (HTTP FALLBACK).`]);
+        } else {
+          throw new Error(resData.error || 'Server rejected transaction payload');
+        }
+      } catch (err: any) {
+        setLogs(prev => [...prev, `> [${new Date().toLocaleTimeString()}] [FAIL] INTERVENTION DESYNC ERROR: ${err.message || err}`]);
+      } finally {
+        setIsDispatching(false);
+      }
     }
   };
 
