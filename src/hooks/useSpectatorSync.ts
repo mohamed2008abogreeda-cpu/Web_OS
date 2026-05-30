@@ -7,8 +7,8 @@ import Pusher from 'pusher-js';
 /**
  * Visitor Spectator Sync Hook (Broadcaster & bi-directional Command Listener)
  * 
- * Captures visitor coordinates and active window state, applying optimized
- * 500ms throttling and 5px delta-distance thresholding to prevent API flooding.
+ * Captures visitor coordinates and active window state, applying highly optimized
+ * 1000ms strict throttling and 20px Euclidean delta-distance checks to prevent API flooding.
  * 
  * Normalized coordinates logic:
  *   - visitor.x / visitor.viewportWidth represents relative percentage width.
@@ -19,9 +19,9 @@ import Pusher from 'pusher-js';
  */
 export function useSpectatorSync() {
   const lastUpdate = useRef<number>(0);
-  const lastX = useRef<number>(0);
-  const lastY = useRef<number>(0);
-  const lastWindowsHash = useRef<string>('');
+  const previousX = useRef<number>(0);
+  const previousY = useRef<number>(0);
+  const previousWindowHash = useRef<string>('');
 
   useEffect(() => {
     const isSpectating = useOSStore.getState().isSpectating;
@@ -53,7 +53,6 @@ export function useSpectatorSync() {
       } else if (data.type === "OPEN_MODAL") {
         const appId = data.payload?.appId;
         if (appId) {
-          // Resolve standard app definitions from user's environment apps
           const { SYSTEM_APPS } = require('@/lib/mockData');
           const { LINUX_APPS } = require('@/components/desktops/linux/LinuxDesktop');
           
@@ -74,24 +73,25 @@ export function useSpectatorSync() {
     const handleMouseMove = (e: MouseEvent) => {
       const now = Date.now();
       
-      // Strict 500ms Throttle check
-      if (now - lastUpdate.current < 500) return;
+      // Strict 1000ms Throttling gate
+      if (now - lastUpdate.current < 1000) return;
 
       const activeWindows = useOSStore.getState().windows;
       const windowsHash = JSON.stringify(activeWindows.map(w => ({ id: w.id, isOpen: w.isOpen })));
 
-      // Delta Threshold check (only transmit if cursor moved > 5px OR window state changed)
-      const dx = e.clientX - lastX.current;
-      const dy = e.clientY - lastY.current;
-      const distance = Math.sqrt(dx * dx + dy * dy);
-      const stateChanged = windowsHash !== lastWindowsHash.current;
+      // Calculate Euclidean distance: hypotenuse = Math.hypot(dx, dy)
+      const dx = e.clientX - previousX.current;
+      const dy = e.clientY - previousY.current;
+      const distance = Math.hypot(dx, dy);
+      const stateChanged = windowsHash !== previousWindowHash.current;
 
-      if (distance < 5 && !stateChanged) return;
+      // Delta Threshold check (only transmit if cursor translated > 20px OR window state changed)
+      if (distance < 20 && !stateChanged) return;
 
       lastUpdate.current = now;
-      lastX.current = e.clientX;
-      lastY.current = e.clientY;
-      lastWindowsHash.current = windowsHash;
+      previousX.current = e.clientX;
+      previousY.current = e.clientY;
+      previousWindowHash.current = windowsHash;
 
       // Mathematical Normalization Payload
       const payload = JSON.stringify({
@@ -103,11 +103,14 @@ export function useSpectatorSync() {
         activeWindows,
       });
 
-      // Beacon-safe fire-and-forget sync delivery
-      navigator.sendBeacon(
-        '/api/sync',
-        new Blob([payload], { type: 'application/json' })
-      );
+      // Secure async edge-compliant fetch transaction (fire-and-forget)
+      fetch('/api/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: payload
+      }).catch(err => {
+        console.warn('[SpectatorSync Broadcaster] Fetch sync dispatch failed:', err);
+      });
     };
 
     window.addEventListener('mousemove', handleMouseMove);
