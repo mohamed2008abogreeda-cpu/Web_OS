@@ -13,6 +13,8 @@ export default function LinuxComms() {
 
   // ─── WebRTC integration state ───
   const [activeRoomId, setActiveRoomId] = useState<string>('');
+  const [micMuted, setMicMuted] = useState(false);
+  const [videoMuted, setVideoMuted] = useState(true);
   
   const {
     status,
@@ -22,10 +24,13 @@ export default function LinuxComms() {
     remoteStream,
     joinCall,
     endCall,
+    toggleMic,
+    toggleVideo,
   } = useWebRTCCall(activeRoomId, false);
 
   const localVideoRef = useRef<HTMLVideoElement | null>(null);
   const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
+  const remoteAudioRef = useRef<HTMLAudioElement | null>(null);
 
   // Attach stream objects safely to HTML5 Video elements once hooks emit them
   useEffect(() => {
@@ -37,6 +42,12 @@ export default function LinuxComms() {
   useEffect(() => {
     if (remoteVideoRef.current && remoteStream) {
       remoteVideoRef.current.srcObject = remoteStream;
+    }
+    if (remoteAudioRef.current && remoteStream) {
+      remoteAudioRef.current.srcObject = remoteStream;
+      remoteAudioRef.current.play().catch((err) => {
+        console.warn('[LinuxComms] Autoplay blocked for audio stream, waiting for user interaction:', err);
+      });
     }
   }, [remoteStream]);
 
@@ -81,6 +92,8 @@ export default function LinuxComms() {
         setLogs(prev => [...prev, '> Pinging secure relay...']);
 
         setTimeout(async () => {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 8000);
           try {
             const res = await fetch('/api/notify', {
               method: 'POST',
@@ -89,8 +102,10 @@ export default function LinuxComms() {
                 caller: 'Visitor',
                 environment: 'Linux/Kali',
                 roomId
-              })
+              }),
+              signal: controller.signal
             });
+            clearTimeout(timeoutId);
 
             if (res.ok) {
               setLogs(prev => [...prev, '> LINK SECURED. ADMIN DEVICE PINGED.', '> Awaiting admin intercept...']);
@@ -103,6 +118,7 @@ export default function LinuxComms() {
               setPhase('idle');
             }
           } catch (err) {
+            clearTimeout(timeoutId);
             setLogs(prev => [...prev, '> ERROR: Security handshake timeout. Network route lost.']);
             setPhase('idle');
           }
@@ -114,13 +130,13 @@ export default function LinuxComms() {
   const showVideo = connected || callStatus === 'active';
 
   return (
-    <div className="w-full h-full bg-[#0c0c0c] text-emerald-500 font-mono p-6 flex flex-col relative overflow-hidden select-none">
+    <div className="w-full h-full bg-[#0c0c0c] text-emerald-500 font-mono p-4 flex flex-col relative overflow-hidden select-none">
       
       {/* Radar scanning line overlay */}
       <div className="absolute inset-0 pointer-events-none bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0IiBoZWlnaHQ9IjQiPgo8cmVjdCB3aWR0aD0iNCIgaGVpZ2h0PSI0IiBmaWxsPSJ0cmFuc3BhcmVudCIvPgo8cmVjdCB3aWR0aD0iNCIgaGVpZ2h0PSIxIiBmaWxsPSJyZ2JhKDE2LCAxODUsIDEyOSwgMC4wNCkiLz4KPC9zdmc+')] opacity-50 z-10" />
 
       {/* Protocol status bar */}
-      <div className="flex items-center justify-between border-b border-emerald-900 pb-4 mb-6 relative z-20">
+      <div className="flex items-center justify-between border-b border-emerald-900 pb-3 mb-4 relative z-20">
         <div className="flex items-center gap-3">
           <Shield className="w-6 h-6 text-emerald-400 animate-pulse" />
           <h2 className="text-xl font-bold tracking-widest text-emerald-400">SECURE_LINK_PROTOCOL</h2>
@@ -137,14 +153,14 @@ export default function LinuxComms() {
 
       {/* Main interactive area */}
       {showVideo ? (
-        <div className="flex-1 grid grid-cols-2 gap-4 mb-6 relative z-20">
+        <div className="flex-1 min-h-0 grid grid-cols-2 gap-4 mb-4 relative z-20">
           {/* Local Camera stream */}
-          <div className="bg-black border border-emerald-900 rounded p-2 flex flex-col relative shadow-[0_0_20px_rgba(16,185,129,0.05)]">
+          <div className="bg-black border border-emerald-900 rounded p-2 flex flex-col relative shadow-[0_0_20px_rgba(16,185,129,0.05)] min-h-0">
             <div className="text-[10px] text-emerald-400 font-bold mb-2 flex items-center justify-between">
               <span>[KALI_CAM_01] LOCAL_FEED</span>
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
             </div>
-            <div className="flex-1 bg-zinc-900/40 rounded overflow-hidden relative">
+            <div className="flex-1 bg-zinc-900/40 rounded overflow-hidden relative min-h-0">
               <video
                 ref={localVideoRef}
                 autoPlay
@@ -157,16 +173,17 @@ export default function LinuxComms() {
           </div>
 
           {/* Remote Camera stream */}
-          <div className="bg-black border border-emerald-900 rounded p-2 flex flex-col relative shadow-[0_0_20px_rgba(16,185,129,0.05)]">
+          <div className="bg-black border border-emerald-900 rounded p-2 flex flex-col relative shadow-[0_0_20px_rgba(16,185,129,0.05)] min-h-0">
             <div className="text-[10px] text-emerald-400 font-bold mb-2 flex items-center justify-between">
               <span>[COMMAND_CENTER_CAM] REMOTE_FEED</span>
               <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping" />
             </div>
-            <div className="flex-1 bg-zinc-900/40 rounded overflow-hidden relative">
+            <div className="flex-1 bg-zinc-900/40 rounded overflow-hidden relative min-h-0">
               <video
                 ref={remoteVideoRef}
                 autoPlay
                 playsInline
+                muted
                 className="w-full h-full object-cover grayscale sepia contrast-125 brightness-90"
               />
               <div className="absolute inset-0 pointer-events-none border border-emerald-500/20" />
@@ -189,46 +206,80 @@ export default function LinuxComms() {
         </div>
       )}
 
-      {/* Visual progress log terminal */}
-      <div className="bg-zinc-950 border border-emerald-900/40 p-4 rounded flex flex-col gap-2 font-mono text-xs relative z-20 mb-6 max-h-[140px] overflow-y-auto">
-        <div className="text-emerald-500 font-bold border-b border-emerald-950 pb-1 flex justify-between">
-          <span>&gt;_ LOGS</span>
-          <span className="text-zinc-600 text-[10px]">ROOM_ID: {activeRoomId || 'N/A'}</span>
+      {/* Visual progress log terminal - only render when call is not active to save layout height */}
+      {!showVideo && (
+        <div className="bg-zinc-950 border border-emerald-900/40 p-4 rounded flex flex-col gap-2 font-mono text-xs relative z-20 mb-4 max-h-[120px] overflow-y-auto">
+          <div className="text-emerald-500 font-bold border-b border-emerald-950 pb-1 flex justify-between">
+            <span>&gt;_ LOGS</span>
+            <span className="text-zinc-600 text-[10px]">ROOM_ID: {activeRoomId || 'N/A'}</span>
+          </div>
+          {logs.length === 0 ? (
+            <div className="text-emerald-800 italic animate-pulse">&gt; Terminal idle. Awaiting secure pager signal activation...</div>
+          ) : (
+            logs.map((log, idx) => {
+              let colorClass = 'text-emerald-600';
+              if (log.includes('Initiating')) colorClass = 'text-emerald-400';
+              if (log.includes('[OK]')) colorClass = 'text-yellow-400';
+              if (log.includes('Pinging')) colorClass = 'text-sky-400 animate-pulse';
+              if (log.includes('LINK SECURED')) colorClass = 'text-emerald-400 font-bold';
+              if (log.includes('ERROR')) colorClass = 'text-red-500 font-bold';
+              return (
+                <div key={idx} className={`${colorClass} tracking-wide`}>
+                  {log}
+                </div>
+              );
+            })
+          )}
         </div>
-        {logs.length === 0 ? (
-          <div className="text-emerald-800 italic animate-pulse">&gt; Terminal idle. Awaiting secure pager signal activation...</div>
-        ) : (
-          logs.map((log, idx) => {
-            let colorClass = 'text-emerald-600';
-            if (log.includes('Initiating')) colorClass = 'text-emerald-400';
-            if (log.includes('[OK]')) colorClass = 'text-yellow-400';
-            if (log.includes('Pinging')) colorClass = 'text-sky-400 animate-pulse';
-            if (log.includes('LINK SECURED')) colorClass = 'text-emerald-400 font-bold';
-            if (log.includes('ERROR')) colorClass = 'text-red-500 font-bold';
-            return (
-              <div key={idx} className={`${colorClass} tracking-wide`}>
-                {log}
-              </div>
-            );
-          })
-        )}
-      </div>
+      )}
 
       {/* Secure link activation buttons */}
-      <div className="flex items-center justify-center relative z-20 mt-auto">
+      <div className="flex items-center justify-center gap-4 relative z-20 mt-auto w-full px-4">
         {showVideo ? (
-          <button
-            onClick={() => {
-              endCall();
-              setActiveRoomId('');
-              setPhase('idle');
-              setLogs([]);
-            }}
-            className="px-6 py-4 font-bold tracking-[0.2em] transition-all flex items-center gap-3 border border-red-500 text-red-500 hover:bg-red-500/10 cursor-pointer shadow-[0_0_15px_rgba(239,68,68,0.2)]"
-          >
-            <Radio className="w-5 h-5 text-red-400" />
-            [ SEVER SECURE LINK ]
-          </button>
+          <>
+            <button
+              onClick={() => {
+                const enabled = toggleMic();
+                setMicMuted(!enabled);
+              }}
+              className={`px-4 py-3 font-bold tracking-wider transition-all flex items-center gap-2 border text-xs cursor-pointer ${
+                micMuted 
+                  ? 'border-red-500/60 text-red-400 bg-red-500/5' 
+                  : 'border-emerald-500/60 text-emerald-400 hover:bg-emerald-500/10'
+              }`}
+            >
+              {micMuted ? '[ AUDIO_MUTED ]' : '[ AUDIO_ACTIVE ]'}
+            </button>
+
+            <button
+              onClick={async () => {
+                const enabled = await toggleVideo();
+                setVideoMuted(!enabled);
+              }}
+              className={`px-4 py-3 font-bold tracking-wider transition-all flex items-center gap-2 border text-xs cursor-pointer ${
+                videoMuted 
+                  ? 'border-red-500/60 text-red-400 bg-red-500/5' 
+                  : 'border-emerald-500/60 text-emerald-400 hover:bg-emerald-500/10'
+              }`}
+            >
+              {videoMuted ? '[ CAMERA_MUTED ]' : '[ CAMERA_ACTIVE ]'}
+            </button>
+
+            <button
+              onClick={() => {
+                endCall();
+                setActiveRoomId('');
+                setPhase('idle');
+                setLogs([]);
+                setMicMuted(false);
+                setVideoMuted(true);
+              }}
+              className="px-6 py-3 font-bold tracking-[0.2em] transition-all flex items-center gap-3 border border-red-500 text-red-500 hover:bg-red-500/10 cursor-pointer shadow-[0_0_15px_rgba(239,68,68,0.2)] text-xs"
+            >
+              <Radio className="w-4 h-4 text-red-400" />
+              [ SEVER SECURE LINK ]
+            </button>
+          </>
         ) : (
           <button
             onClick={handleCall}
@@ -260,6 +311,9 @@ export default function LinuxComms() {
           </button>
         )}
       </div>
+
+      {/* Hidden Audio element for remote audio stream to bypass autoplay policy */}
+      <audio ref={remoteAudioRef} autoPlay className="hidden" />
     </div>
   );
 }

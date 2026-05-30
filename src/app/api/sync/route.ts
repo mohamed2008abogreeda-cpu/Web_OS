@@ -1,26 +1,33 @@
 // ============================================================
 // API: POST /api/sync — Broadcast state to spectating admin via Pusher
 // Designed for Cloudflare Pages with Node.js compatibility shims.
+// Accepts normalized coordinates (0.0–1.0 viewport ratios).
 // ============================================================
 import { NextResponse } from "next/server";
 import { triggerPusherEdge } from "@/lib/pusherEdge";
 
 export async function POST(req: Request) {
   try {
-    const { x, y, activeWindows } = await req.json();
+    const { x, y, screenWidth, screenHeight, activeWindows } = await req.json();
 
-    // Verify coordinates are numeric and windows is an array
-    if (typeof x !== 'number' || typeof y !== 'number' || !Array.isArray(activeWindows)) {
+    // Validate: x,y must be numbers in [0,1] range, activeWindows must be an array
+    if (
+      typeof x !== 'number' || typeof y !== 'number' ||
+      !Array.isArray(activeWindows) ||
+      x < 0 || x > 1 || y < 0 || y > 1
+    ) {
       return NextResponse.json(
-        { error: "Invalid payload: x, y must be numbers and activeWindows must be an array" },
+        { error: "Invalid payload: x, y must be numbers in [0,1] range and activeWindows must be an array" },
         { status: 400 }
       );
     }
 
-    // Broadcast the cursor coordinates and window state to Pusher channel
+    // Broadcast the normalized cursor coordinates and window state to Pusher channel
     await triggerPusherEdge("os-sync-channel", "os-state-update", {
       x,
       y,
+      screenWidth: typeof screenWidth === 'number' ? screenWidth : null,
+      screenHeight: typeof screenHeight === 'number' ? screenHeight : null,
       activeWindows,
     });
 

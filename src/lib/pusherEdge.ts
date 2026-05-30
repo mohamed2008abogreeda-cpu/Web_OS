@@ -6,6 +6,9 @@
 /**
  * Trigger a Pusher event via the HTTP REST API.
  * No external dependencies — uses only Web standard APIs.
+ *
+ * Returns a warning object if dummy credentials are detected,
+ * otherwise returns the Pusher API response.
  */
 export async function triggerPusherEdge(
   channel: string,
@@ -16,6 +19,12 @@ export async function triggerPusherEdge(
   const key = process.env.NEXT_PUBLIC_PUSHER_KEY || "dummy_key";
   const secret = process.env.PUSHER_SECRET || "dummy_secret";
   const cluster = process.env.NEXT_PUBLIC_PUSHER_CLUSTER || "us2";
+
+  // Guard: fail fast with a descriptive warning if credentials are not configured
+  if (appId === "dummy_app_id" || key === "dummy_key" || secret === "dummy_secret") {
+    console.warn("[PusherEdge] Using dummy credentials — Pusher calls will fail. Set PUSHER_APP_ID, NEXT_PUBLIC_PUSHER_KEY, and PUSHER_SECRET.");
+    return { warning: "dummy_credentials", channel, event };
+  }
 
   const timestamp = Math.floor(Date.now() / 1000).toString();
   const bodyString = JSON.stringify({
@@ -41,8 +50,11 @@ export async function triggerPusherEdge(
   });
 
   if (!res.ok) {
-    throw new Error(`Pusher fetch failed: ${res.status} ${await res.text()}`);
+    const body = await res.text();
+    console.error(`[PusherEdge] ${res.status} on ${channel}/${event}:`, body);
+    throw new Error(`Pusher ${res.status}: ${body.slice(0, 200)}`);
   }
+
   return res.json() as Promise<Record<string, unknown>>;
 }
 

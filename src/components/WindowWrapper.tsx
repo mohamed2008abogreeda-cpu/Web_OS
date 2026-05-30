@@ -32,7 +32,7 @@ export default function WindowWrapper({ window: win, children }: WindowWrapperPr
     if (!isActive) focusWindow(win.id);
   }, [isActive, focusWindow, win.id]);
 
-  if (isMobile || win.isMaximized) {
+  if (isMobile) {
     return (
       <AnimatePresence>
         <motion.div
@@ -66,10 +66,13 @@ export default function WindowWrapper({ window: win, children }: WindowWrapperPr
   return (
     <Rnd
       ref={rndRef}
-      default={{ x: win.x, y: win.y, width: win.width, height: win.height }}
+      size={win.isMaximized ? { width: '100%', height: '100%' } : { width: win.width, height: win.height }}
+      position={win.isMaximized ? { x: 0, y: 0 } : { x: win.x, y: win.y }}
+      disableDragging={win.isMaximized}
+      enableResizing={!win.isMaximized}
       minWidth={380}
       minHeight={260}
-      style={{ display: win.isMinimized ? 'none' : 'flex', pointerEvents: 'auto' }}
+      style={{ display: win.isMinimized ? 'none' : 'flex', pointerEvents: 'auto', transition: 'width 0.2s, height 0.2s, transform 0.2s' }}
       z={isActive ? 50 : 10}
       dragHandleClassName="window-drag-handle"
       onDragStart={() => setIsDragging(true)}

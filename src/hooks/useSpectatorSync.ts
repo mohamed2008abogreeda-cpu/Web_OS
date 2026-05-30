@@ -5,9 +5,15 @@ import { useOSStore } from '@/store/useOSStore';
 
 /**
  * Visitor Spectator Sync Hook (Broadcaster Role)
+ * 
  * Silently captures the visitor's mouse coordinates and active window state,
  * throttling updates to max once every 100ms to broadcast state securely
  * to spectating admin dashboards without network flooding.
+ * 
+ * FIX 1: Coordinates are normalized to 0.0–1.0 ratios (percentage of viewport)
+ *        so they render correctly on any screen size.
+ * FIX 11: Uses navigator.sendBeacon() for fire-and-forget delivery.
+ *         sendBeacon doesn't block the UI thread and survives page unload.
  */
 export function useSpectatorSync() {
   const lastUpdate = useRef<number>(0);
@@ -20,34 +26,34 @@ export function useSpectatorSync() {
     const handleMouseMove = (e: MouseEvent) => {
       const now = Date.now();
       
-      // Implement throttling mechanism: max once every 100ms
+      // Throttle: max once every 100ms
       if (now - lastUpdate.current < 100) return;
       lastUpdate.current = now;
 
       // Extract currently open windows array from centralized state store
       const activeWindows = useOSStore.getState().windows;
 
-      // Send silent payload to Edge-compatible sync endpoint
-      fetch('/api/sync', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          x: e.clientX,
-          y: e.clientY,
-          activeWindows,
-        }),
-      }).catch((err) => {
-        // Silently capture any network/broadcast failures
-        console.error('Broadcaster synchronization pipeline error:', err);
+      // Normalize coordinates to 0.0–1.0 ratios for cross-screen compatibility
+      const payload = JSON.stringify({
+        x: e.clientX / window.innerWidth,
+        y: e.clientY / window.innerHeight,
+        screenWidth: window.innerWidth,
+        screenHeight: window.innerHeight,
+        activeWindows,
       });
+
+      // sendBeacon: fire-and-forget POST — no connection kept alive,
+      // no UI thread blocking, survives page unload
+      navigator.sendBeacon(
+        '/api/sync',
+        new Blob([payload], { type: 'application/json' })
+      );
     };
 
     // Initialize global mouse tracking listener
     window.addEventListener('mousemove', handleMouseMove);
 
-    // Flawless cleanup on component unmount to prevent resource leaks
+    // Clean up on component unmount to prevent resource leaks
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
     };

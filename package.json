@@ -5,10 +5,10 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "build:worker": "cloudflare",
-    "dev:worker": "wrangler dev --port 8771",
+    "build:worker": "npx @opennextjs/cloudflare build",
+    "dev:worker": "npx wrangler dev --port 8771",
     "preview:worker": "npm run build:worker && npm run dev:worker",
-    "deploy": "npm run build:worker && wrangler deploy",
+    "deploy": "npm run build:worker && npx wrangler deploy",
     "start": "next start",
     "lint": "eslint"
   },

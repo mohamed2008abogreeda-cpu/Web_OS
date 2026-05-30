@@ -79,12 +79,12 @@ export default function MacOSDesktop() {
               <DropdownMenuSeparator className="bg-white/10" />
               <DropdownMenuItem 
                 className="cursor-pointer focus:bg-blue-500 focus:text-white" 
-                onClick={() => useOSStore.getState().logout()}
+                onClick={() => useOSStore.getState().logoutUser()}
                 data-testid="switch-user"
               >
                 Switch User...
               </DropdownMenuItem>
-              <DropdownMenuItem className="cursor-pointer focus:bg-blue-500 focus:text-white" onClick={() => useOSStore.getState().logout()}>
+              <DropdownMenuItem className="cursor-pointer focus:bg-blue-500 focus:text-white" onClick={() => useOSStore.getState().logoutUser()}>
                 Log Out {user?.name}...
               </DropdownMenuItem>
             </DropdownMenuContent>

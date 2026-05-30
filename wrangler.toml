@@ -8,26 +8,31 @@
 # ============================================================
 
 name = "web-os-portfolio"
-main = ".worker-next/index.mjs"
+main = ".open-next/worker.js"
 compatibility_date = "2024-12-30"
 compatibility_flags = ["nodejs_compat"]
 
 [assets]
-directory = ".worker-next/assets"
+directory = ".open-next/assets"
 binding = "ASSETS"
 
 # ── Non-sensitive environment variables ──────────────────
 [vars]
 NEXT_PUBLIC_PUSHER_CLUSTER = "us2"
 
-# ── D1 Database (Phase 2 — binding reserved) ────────────
-# Create with: wrangler d1 create portfolio-db
-# Then uncomment and paste the database_id:
-#
-# [[d1_databases]]
-# binding = "DB"
-# database_name = "portfolio-db"
-# database_id = "<paste-id-here>"
+# ── D1 Database (Active) ────────────────────────────
+# To create production database, run: wrangler d1 create portfolio-db
+# Then replace the database_id below with your generated ID.
+[[d1_databases]]
+binding = "DB"
+database_name = "portfolio-db"
+database_id = "d1-database-placeholder-id"
+
+# ── R2 Object Storage (Active) ──────────────────────
+# To create production R2 bucket, run: wrangler r2 bucket create portfolio-assets
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "portfolio-assets"
 
 # ── Secrets (set via CLI, never committed) ───────────────
 # wrangler secret put ADMIN_PASSWORD

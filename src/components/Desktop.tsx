@@ -5,17 +5,23 @@ import dynamic from 'next/dynamic';
 const LinuxEnvironment = dynamic(() => import('./desktops/linux/LinuxDesktop'), { ssr: false });
 const MacEnvironment = dynamic(() => import('./desktops/mac/MacDesktop'), { ssr: false });
 const WinEnvironment = dynamic(() => import('./desktops/windows/WinDesktop'), { ssr: false });
+const MobileEnvironment = dynamic(() => import('./desktops/MobileDesktop'), { ssr: false });
 
 import { useEffect, useState } from 'react';
 import { AnimatePresence } from 'framer-motion';
 
 export default function Desktop() {
   const currentUser = useOSStore(s => s.currentUser);
+  const isMobile = useOSStore(s => s.isMobile);
   const [activeUser, setActiveUser] = useState(currentUser);
 
   useEffect(() => {
     setActiveUser(currentUser);
   }, [currentUser]);
+
+  if (isMobile) {
+    return <MobileEnvironment />;
+  }
 
   return (
     <AnimatePresence mode="wait">

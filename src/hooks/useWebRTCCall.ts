@@ -3,6 +3,14 @@
  *
  * Signaling: Pusher (pusher-js) for real-time WebRTC SDP exchange
  * Media:     Native WebRTC with STUN (Google + Twilio)
+ *
+ * FIXES APPLIED:
+ *   Fix 2: Signaling flooding — joinCall no longer sends duplicate offer.
+ *          Only handleSignal creates offers/answers in response to signals.
+ *   Fix 5: ICE race condition — remoteDescReady ref flag ensures candidates
+ *          are only added AFTER setRemoteDescription resolves. drainIce()
+ *          is called after every remote description set.
+ *   Fix 8: Added toggleVideo() alongside toggleMic().
  */
 import { useEffect, useRef, useState, useCallback } from 'react';
 import Pusher from 'pusher-js';
@@ -24,19 +32,22 @@ export function useWebRTCCall(roomId: string, isAdmin: boolean) {
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
 
   const localStreamRef = useRef<MediaStream | null>(null);
+  const remoteStreamRef = useRef<MediaStream | null>(null);
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const mountedRef = useRef(true);
   const iceQueue = useRef<RTCIceCandidateInit[]>([]);
+  // Fix 5: Track whether remoteDescription has been fully set
+  const remoteDescReady = useRef(false);
 
   const myRole = isAdmin ? 'admin' : 'visitor';
 
   // ─── Send signal to peer ─────────────────────────────────
-  const send = useCallback((type: string, payload?: any) => {
+  const send = useCallback((type: string, payload?: unknown) => {
     fetch('/api/call/signal', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ roomId, role: myRole, type, payload }),
-    }).catch(console.warn);
+    }).catch((err) => console.warn('[WebRTC] Signal send failed:', err));
   }, [roomId, myRole]);
 
   // ─── Cleanup WebRTC ──────────────────────────────────────
@@ -46,7 +57,10 @@ export function useWebRTCCall(roomId: string, isAdmin: boolean) {
     localStreamRef.current?.getTracks().forEach((t) => t.stop());
     localStreamRef.current = null;
     setLocalStream(null);
+    remoteStreamRef.current = null;
+    setRemoteStream(null);
     iceQueue.current = [];
+    remoteDescReady.current = false;
   }, []);
 
   // ─── Create PeerConnection ───────────────────────────────
@@ -63,7 +77,20 @@ export function useWebRTCCall(roomId: string, isAdmin: boolean) {
 
     pc.ontrack = (e) => {
       if (!mountedRef.current) return;
-      setRemoteStream(e.streams[0]);
+      console.log('[WebRTC] Remote track received:', e.track.kind, e.track.id);
+
+      if (!remoteStreamRef.current) {
+        remoteStreamRef.current = new MediaStream();
+      }
+
+      // Add the track to our persistent remote stream if it isn't already present
+      const exists = remoteStreamRef.current.getTracks().find((t) => t.id === e.track.id);
+      if (!exists) {
+        remoteStreamRef.current.addTrack(e.track);
+      }
+
+      // Force a new MediaStream instance so React reference changes and triggers re-render
+      setRemoteStream(new MediaStream(remoteStreamRef.current.getTracks()));
       setConnected(true);
       setCallStatus('active');
     };
@@ -85,21 +112,26 @@ export function useWebRTCCall(roomId: string, isAdmin: boolean) {
   const drainIce = useCallback(async () => {
     const pc = pcRef.current;
     if (!pc || !pc.remoteDescription) return;
-    for (const c of iceQueue.current) {
+    const queued = [...iceQueue.current];
+    iceQueue.current = [];
+    for (const c of queued) {
       try {
         await pc.addIceCandidate(new RTCIceCandidate(c));
-      } catch {}
+      } catch (e) {
+        console.warn('[WebRTC] Failed to drain ICE candidate:', e);
+      }
     }
-    iceQueue.current = [];
   }, []);
 
   // ─── Handle signaling message ────────────────────────────
   const handleSignal = useCallback(
-    async (msg: { role: string; type: string; payload?: any }) => {
+    async (msg: { role: string; type: string; payload?: unknown }) => {
       if (!mountedRef.current) return;
 
       try {
         if (msg.type === 'join') {
+          // Fix 2: Only the admin creates an offer when it sees a peer join.
+          // The visitor just joined — admin creates and sends the offer.
           const pc = pcRef.current;
           if (pc && isAdmin) {
             const offer = await pc.createOffer();
@@ -107,9 +139,11 @@ export function useWebRTCCall(roomId: string, isAdmin: boolean) {
             send('offer', offer);
           }
         } else if (msg.type === 'offer') {
+          // Visitor receives an offer — acquire media if not already done
           if (!localStreamRef.current) {
             try {
-              const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+              const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+              
               localStreamRef.current = stream;
               setLocalStream(stream);
             } catch {
@@ -123,26 +157,36 @@ export function useWebRTCCall(roomId: string, isAdmin: boolean) {
               pc.addTrack(t, localStreamRef.current!);
             }
           });
-          await pc.setRemoteDescription(new RTCSessionDescription(msg.payload));
+          await pc.setRemoteDescription(new RTCSessionDescription(msg.payload as RTCSessionDescriptionInit));
+          // Fix 5: Mark remote description as ready, then drain queued candidates
+          remoteDescReady.current = true;
           await drainIce();
           const answer = await pc.createAnswer();
           await pc.setLocalDescription(answer);
           send('answer', answer);
-          setCallStatus('ringing');
+          
+          // Prevent regressing from 'active' back to 'ringing' during renegotiation
+          setCallStatus((prev) => (prev === 'active' ? 'active' : 'ringing'));
         } else if (msg.type === 'answer') {
           const pc = pcRef.current;
           if (pc && pc.signalingState === 'have-local-offer') {
-            await pc.setRemoteDescription(new RTCSessionDescription(msg.payload));
+            await pc.setRemoteDescription(new RTCSessionDescription(msg.payload as RTCSessionDescriptionInit));
+            // Fix 5: Mark remote description as ready, then drain queued candidates
+            remoteDescReady.current = true;
             await drainIce();
           }
         } else if (msg.type === 'candidate') {
           const pc = pcRef.current;
-          if (pc?.remoteDescription) {
+          // Fix 5: Only add ICE candidates if remoteDescription is fully set
+          if (pc?.remoteDescription && remoteDescReady.current) {
             try {
-              await pc.addIceCandidate(new RTCIceCandidate(msg.payload));
-            } catch {}
+              await pc.addIceCandidate(new RTCIceCandidate(msg.payload as RTCIceCandidateInit));
+            } catch (e) {
+              console.warn('[WebRTC] Failed to add ICE candidate:', e);
+            }
           } else {
-            iceQueue.current.push(msg.payload);
+            // Queue candidates that arrive before remoteDescription
+            iceQueue.current.push(msg.payload as RTCIceCandidateInit);
           }
         } else if (msg.type === 'leave') {
           cleanupRTC();
@@ -168,7 +212,7 @@ export function useWebRTCCall(roomId: string, isAdmin: boolean) {
     });
 
     const channel = pusher.subscribe(`call-${roomId}`);
-    channel.bind('signal', (data: any) => {
+    channel.bind('signal', (data: { role: string; type: string; payload?: unknown }) => {
       if (data.role === myRole) return;
       handleSignal(data);
     });
@@ -195,19 +239,21 @@ export function useWebRTCCall(roomId: string, isAdmin: boolean) {
       }
 
       setCallStatus('ringing');
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+      
       localStreamRef.current = stream;
       setLocalStream(stream);
 
       const pc = makePeerConnection();
       stream.getTracks().forEach((t) => pc.addTrack(t, stream));
 
-      send('join');
-
+      // Admin initiates the offer immediately on join, while visitor pings 'join'
       if (isAdmin) {
         const offer = await pc.createOffer();
         await pc.setLocalDescription(offer);
         send('offer', offer);
+      } else {
+        send('join');
       }
     } catch (err) {
       console.error('[WebRTC] Join error:', err);
@@ -234,6 +280,95 @@ export function useWebRTCCall(roomId: string, isAdmin: boolean) {
     return false;
   }, []);
 
+  // ─── Public: toggle video (Fix 8) ────────────────────────
+  const toggleVideo = useCallback(async (): Promise<boolean> => {
+    const pc = pcRef.current;
+    const stream = localStreamRef.current;
+    if (!stream) return false;
+
+    let videoTrack = stream.getVideoTracks()[0];
+
+    if (!videoTrack) {
+      try {
+        console.log('[WebRTC] Upgrading stream to include camera on-demand...');
+        
+        // Stop the old audio track first to prevent concurrent media conflicts on mobile devices
+        const oldAudioTrack = stream.getAudioTracks()[0];
+        if (oldAudioTrack) {
+          oldAudioTrack.stop();
+        }
+
+        // Request a unified audio and video stream. Since microphone is already granted,
+        // the browser will only prompt the user for the camera permission!
+        const unifiedStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+        
+        localStreamRef.current = unifiedStream;
+        setLocalStream(unifiedStream);
+
+        const newAudioTrack = unifiedStream.getAudioTracks()[0];
+        const newVideoTrack = unifiedStream.getVideoTracks()[0];
+
+        if (pc) {
+          // Replace the audio sender track with the new one to maintain seamless audio
+          const audioSender = pc.getSenders().find(s => s.track?.kind === 'audio');
+          if (audioSender && newAudioTrack) {
+            await audioSender.replaceTrack(newAudioTrack);
+          }
+
+          // Add the new video track to the connection
+          if (newVideoTrack) {
+            pc.addTrack(newVideoTrack, unifiedStream);
+            
+            // Trigger WebRTC renegotiation
+            const offer = await pc.createOffer();
+            await pc.setLocalDescription(offer);
+            send('offer', offer);
+          }
+        }
+        return true;
+      } catch (e) {
+        console.error('[WebRTC] Failed to upgrade stream for camera on-demand:', e);
+        
+        // Fallback: recovery audio-only stream so call doesn't drop on permission deny
+        try {
+          const fallbackStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+          localStreamRef.current = fallbackStream;
+          setLocalStream(fallbackStream);
+          if (pc) {
+            const audioSender = pc.getSenders().find(s => s.track?.kind === 'audio');
+            const newAudio = fallbackStream.getAudioTracks()[0];
+            if (audioSender && newAudio) {
+              await audioSender.replaceTrack(newAudio);
+            }
+          }
+        } catch (fallbackError) {
+          console.error('[WebRTC] Fallback stream recovery failed:', fallbackError);
+        }
+        return false;
+      }
+    } else {
+      videoTrack.enabled = !videoTrack.enabled;
+      return videoTrack.enabled;
+    }
+    return false;
+  }, [send]);
+
+  // ─── Connection Timeout Guard (Fix 13) ───────────────────
+  useEffect(() => {
+    if (callStatus === 'ringing' && !connected) {
+      const timeoutMs = isAdmin ? 15000 : 60000; // Give visitor 60 seconds to wait for admin intercept
+      const timer = setTimeout(() => {
+        if (mountedRef.current && !connected) {
+          console.warn('[WebRTC] Connection timed out: Peer is offline.');
+          setCallStatus('error');
+          cleanupRTC();
+        }
+      }, timeoutMs);
+
+      return () => clearTimeout(timer);
+    }
+  }, [callStatus, connected, isAdmin, cleanupRTC]);
+
   const statusText: Record<CallStatus, string> = {
     idle: 'Initializing...',
     connecting: 'Connecting to Pusher Edge...',
@@ -241,7 +376,9 @@ export function useWebRTCCall(roomId: string, isAdmin: boolean) {
     ringing: isAdmin ? 'Ringing visitor...' : 'Waiting for admin...',
     active: 'Connected securely.',
     ended: 'Call ended.',
-    error: 'Connection error. Check devices.',
+    error: isAdmin 
+      ? 'Connection failed. Visitor may have disconnected or gone offline.' 
+      : 'Connection error. Check devices or secure context.',
   };
 
   return {
@@ -255,5 +392,6 @@ export function useWebRTCCall(roomId: string, isAdmin: boolean) {
     joinCall,
     endCall,
     toggleMic,
+    toggleVideo,
   };
 }

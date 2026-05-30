@@ -7,11 +7,11 @@ import LinuxWindow from './LinuxWindow';
 import LinuxPanel from './LinuxPanel';
 
 export const LINUX_APPS: AppDefinition[] = [
-  { id: 'app-terminal', title: 'Root Terminal', component: 'TerminalApp', defaultWidth: 700, defaultHeight: 500 },
-  { id: 'app-projects', title: 'Files', component: 'ProjectViewer', defaultWidth: 800, defaultHeight: 550 },
-  { id: 'app-comms', title: 'Secure Link', component: 'DiscordCallApp', defaultWidth: 400, defaultHeight: 600 },
-  { id: 'app-about', title: 'System Info', component: 'AboutApp', defaultWidth: 600, defaultHeight: 450 },
-  { id: 'app-settings', title: 'Tweaks', component: 'SettingsApp', defaultWidth: 700, defaultHeight: 500 },
+  { id: 'app-terminal', title: 'Root Terminal', icon: '⌨️', component: 'TerminalApp', defaultWidth: 700, defaultHeight: 500 },
+  { id: 'app-projects', title: 'Files', icon: '📂', component: 'ProjectViewer', defaultWidth: 800, defaultHeight: 550 },
+  { id: 'app-comms', title: 'Secure Link', icon: '📞', component: 'DiscordCallApp', defaultWidth: 400, defaultHeight: 600 },
+  { id: 'app-about', title: 'System Info', icon: '👤', component: 'AboutApp', defaultWidth: 600, defaultHeight: 450 },
+  { id: 'app-settings', title: 'Tweaks', icon: '⚙️', component: 'SettingsApp', defaultWidth: 700, defaultHeight: 500 },
 ];
 
 export default function LinuxDesktop() {

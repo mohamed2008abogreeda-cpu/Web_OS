@@ -1,20 +1,17 @@
 import React from 'react';
 import { useOSStore } from '@/store/useOSStore';
 import { Terminal, Phone, FolderGit2, Settings, User } from 'lucide-react';
-import TerminalApp from './apps/TerminalApp';
-import DiscordCallApp from './apps/DiscordCallApp';
-import ProjectViewer from './apps/ProjectViewer';
-import SettingsApp from './apps/SettingsApp';
-import AboutApp from './apps/AboutApp';
+import { SYSTEM_APPS } from '@/lib/mockData';
+import type { LucideIcon } from 'lucide-react';
 
-// ── UNIVERSAL APP REGISTRY ──
-export const SYSTEM_APPS = [
-  { id: 'about', title: 'About Me', component: <AboutApp />, defaultWidth: 600, defaultHeight: 500, icon: User },
-  { id: 'projects', title: 'Projects', component: <ProjectViewer />, defaultWidth: 800, defaultHeight: 600, icon: FolderGit2 },
-  { id: 'terminal', title: 'Terminal', component: <TerminalApp />, defaultWidth: 700, defaultHeight: 450, icon: Terminal },
-  { id: 'call', title: 'Comms Link', component: <DiscordCallApp />, defaultWidth: 400, defaultHeight: 550, icon: Phone },
-  { id: 'settings', title: 'System Settings', component: <SettingsApp />, defaultWidth: 500, defaultHeight: 400, icon: Settings },
-];
+// ── Taskbar icon mapping (LucideIcon keyed by app id) ──
+const ICON_MAP: Record<string, LucideIcon> = {
+  'app-about': User,
+  'app-projects': FolderGit2,
+  'app-terminal': Terminal,
+  'app-comms': Phone,
+  'app-settings': Settings,
+};
 
 const Taskbar = () => {
   const currentUser = useOSStore((state) => state.currentUser);
@@ -46,12 +43,12 @@ const Taskbar = () => {
       <div className="absolute bottom-4 left-1/2 -translate-x-1/2 h-16 bg-os-bg shadow-os rounded-os z-[100] flex items-center px-4 gap-4 border border-[rgba(255,255,255,0.08)]"
            style={{ backdropFilter: "var(--os-blur)", WebkitBackdropFilter: "var(--os-blur)" }}>
         {SYSTEM_APPS.map(app => {
-          const Icon = app.icon;
+          const Icon = ICON_MAP[app.id];
           const isActive = openApps.some(w => w.appId === app.id);
           return (
             <div key={app.id} onClick={() => openWindow(app)} className="relative group flex justify-center">
               <div className={`w-11 h-11 rounded-full flex items-center justify-center cursor-pointer transition-all duration-300 hover:scale-[1.2] hover:-translate-y-2 ${isActive ? 'bg-os-accent/20 border-os-accent/50' : 'bg-white/5 border-white/10 hover:bg-white/10'} border`}>
-                <Icon className={`w-5 h-5 ${isActive ? 'text-os-accent' : 'text-white/70 group-hover:text-white'}`} />
+                {Icon && <Icon className={`w-5 h-5 ${isActive ? 'text-os-accent' : 'text-white/70 group-hover:text-white'}`} />}
               </div>
               {isActive && <div className="absolute -bottom-1.5 w-1 h-1 rounded-full bg-os-accent shadow-[0_0_5px_var(--os-accent)]" />}
             </div>
@@ -66,12 +63,12 @@ const Taskbar = () => {
       <div className="absolute bottom-0 left-0 w-full h-12 bg-os-bg border-t border-[rgba(139,92,246,0.3)] z-[100] flex items-center justify-center gap-4 shadow-[0_0_30px_rgba(139,92,246,0.15)]"
            style={{ backdropFilter: "var(--os-blur)", WebkitBackdropFilter: "var(--os-blur)" }}>
         {SYSTEM_APPS.map(app => {
-          const Icon = app.icon;
+          const Icon = ICON_MAP[app.id];
           const isActive = openApps.some(w => w.appId === app.id);
           const isFocused = activeWindowId?.includes(app.id);
           return (
             <div key={app.id} onClick={() => openWindow(app)} className={`w-10 h-10 rounded-md relative cursor-pointer flex items-center justify-center transition-all duration-200 ${isActive ? 'bg-white/10' : 'hover:bg-white/5'}`}>
-              <Icon className={`w-5 h-5 ${isActive ? 'text-os-accent' : 'text-zinc-400'}`} />
+              {Icon && <Icon className={`w-5 h-5 ${isActive ? 'text-os-accent' : 'text-zinc-400'}`} />}
               {isActive && (
                 <div className={`absolute bottom-0 left-1/2 -translate-x-1/2 h-1 bg-os-accent rounded-t-md transition-all duration-300 shadow-[0_0_10px_var(--os-accent)] ${isFocused ? 'w-6' : 'w-2'}`} />
               )}

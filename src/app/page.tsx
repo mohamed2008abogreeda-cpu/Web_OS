@@ -26,9 +26,19 @@ function SpectatorGuard() {
 
 export default function Home() {
   const bootPhase = useOSStore((s) => s.bootPhase);
+  const setMobile = useOSStore((s) => s.setMobile);
+
+  useEffect(() => {
+    const check = () => {
+      setMobile(window.innerWidth < 1024);
+    };
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, [setMobile]);
 
   return (
-    <main className="w-screen h-screen overflow-hidden bg-black select-none">
+    <main className="w-full h-screen overflow-hidden bg-black select-none">
       <Suspense fallback={null}>
         <SpectatorGuard />
       </Suspense>

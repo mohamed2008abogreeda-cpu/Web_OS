@@ -1,6 +1,17 @@
-export const runtime = 'edge';
-
+// ============================================================
+// API: POST /api/notify — Unified notification endpoint (ntfy.sh)
+// Handles both WebRTC secure link alerts and general app calls.
+// Runtime managed by @opennextjs/cloudflare — no explicit runtime export.
+// ============================================================
 import { NextResponse } from 'next/server';
+
+/**
+ * Sanitize a string to ASCII-only (removes non-ASCII chars that cause
+ * ByteString errors in Edge/Workers HTTP headers).
+ */
+function asciiSafe(str: string): string {
+  return str.replace(/[^\x20-\x7E]/g, '');
+}
 
 export async function POST(request: Request) {
   try {
@@ -18,20 +29,19 @@ export async function POST(request: Request) {
     const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || reqUrl.host;
     const baseDomain = process.env.NEXT_PUBLIC_APP_URL || `${protocol}://${host}`;
 
-    // التحقق الذكي ودعم كلاً من التنبيهات ثنائية القنوات (P2P WebRTC) والتنبيهات العامة للمحفظة
     if (roomId && caller && environment) {
-      // 1. بروتوكول الاتصال المشفر الآمن (WebRTC Line)
+      // 1. Secure WebRTC P2P call notification
       finalTitle = "SECURE LINK INITIATED";
       finalPriority = "5";
       finalTags = "warning,skull,computer";
-      finalMessage = `Incoming Comms Request by: ${caller} from OS: ${environment}`;
-      clickUrl = `${baseDomain}/admin/comms?room=${roomId}`;
+      finalMessage = `Incoming Comms Request by: ${asciiSafe(String(caller))} from OS: ${asciiSafe(String(environment))}`;
+      clickUrl = `${baseDomain}/admin/comms?room=${encodeURIComponent(String(roomId))}`;
     } else if (customMessage) {
-      // 2. تنبيهات المحفظة العامة (Teams و FaceTime وغيرها)
+      // 2. General app notifications (Teams, FaceTime, etc.)
       finalTitle = title || "Incoming Call Alert";
       finalPriority = priority || "4";
       finalTags = tags || "phone,computer";
-      finalMessage = customMessage;
+      finalMessage = asciiSafe(String(customMessage));
       clickUrl = `${baseDomain}/admin/comms`;
     } else {
       return NextResponse.json(
@@ -40,11 +50,12 @@ export async function POST(request: Request) {
       );
     }
 
-    const ntfyUrl = 'https://ntfy.sh/webos-mohamed-calls';
+    // ntfy topic is configurable via env, with sensible default
+    const ntfyTopic = process.env.NTFY_TOPIC || 'webos-mohamed-calls';
+    const ntfyUrl = `https://ntfy.sh/${ntfyTopic}`;
 
-    // تنظيف الترويسات من أي أحرف خارج نطاق ASCII لمنع خطأ الـ ByteString في Edge Runtime
     const headers: Record<string, string> = {
-      'Title': finalTitle.replace(/[^\x00-\x7F]/g, ""),
+      'Title': asciiSafe(finalTitle),
       'Priority': finalPriority,
       'Tags': finalTags,
     };
@@ -53,12 +64,17 @@ export async function POST(request: Request) {
       headers['Click'] = clickUrl;
     }
 
-    // إرسال الإشعار لـ ntfy.sh عبر Edge fetch
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 6000);
+
     const response = await fetch(ntfyUrl, {
       method: 'POST',
       body: finalMessage,
       headers,
+      signal: controller.signal
     });
+
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       throw new Error(`Failed to send notification via ntfy: ${response.statusText}`);

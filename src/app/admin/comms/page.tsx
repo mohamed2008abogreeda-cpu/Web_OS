@@ -14,6 +14,8 @@ import {
   PhoneOff, 
   Mic, 
   MicOff, 
+  Video,
+  VideoOff,
   PhoneCall, 
   Users, 
   ShieldCheck, 
@@ -34,6 +36,8 @@ function AdminComms() {
   const roomId = searchParams.get('room');
 
   const [micMuted, setMicMuted] = useState(false);
+  const [videoMuted, setVideoMuted] = useState(true);
+  const [showPlayOverlay, setShowPlayOverlay] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   // ─── Live Spectator tracking state (God Mode) ───
@@ -53,6 +57,7 @@ function AdminComms() {
     joinCall,
     endCall,
     toggleMic,
+    toggleVideo,
   } = useWebRTCCall(roomId || '', true);
 
   const localVideoRef = useRef<HTMLVideoElement | null>(null);
@@ -65,9 +70,13 @@ function AdminComms() {
     }
   }, [localStream]);
 
+  // Fix 6: Autoplay policy handling — attempt play and show overlay if blocked
   useEffect(() => {
     if (remoteVideoRef.current && remoteStream) {
       remoteVideoRef.current.srcObject = remoteStream;
+      remoteVideoRef.current.play().catch(() => {
+        setShowPlayOverlay(true);
+      });
     }
   }, [remoteStream]);
 
@@ -94,13 +103,14 @@ function AdminComms() {
 
     const channel = pusher.subscribe('os-sync-channel');
 
-    channel.bind('os-state-update', (data: { x: number; y: number; activeWindows: any[] }) => {
+    channel.bind('os-state-update', (data: { x: number; y: number; screenWidth?: number; screenHeight?: number; activeWindows: unknown[] }) => {
       if (data) {
+        // Fix 1: Coordinates arrive as 0.0–1.0 normalized ratios
         setVisitorX(data.x ?? 0);
         setVisitorY(data.y ?? 0);
         setVisitorWindows(data.activeWindows || []);
 
-        // Sync directly to the Zustand store for full system component sync
+        // Sync normalized coordinates to the Zustand store for GhostCursor
         useOSStore.setState({
           ghostCursor: { x: data.x ?? 0, y: data.y ?? 0 }
         });
@@ -130,6 +140,11 @@ function AdminComms() {
     setMicMuted(!enabled);
   };
 
+  const handleToggleVideo = async () => {
+    const enabled = await toggleVideo();
+    setVideoMuted(!enabled);
+  };
+
   const handleEndCall = () => {
     endCall();
     router.push('/admin');
@@ -141,12 +156,13 @@ function AdminComms() {
     <div className="min-h-screen bg-[#080808] text-zinc-300 font-mono p-6 relative overflow-hidden flex flex-col lg:flex-row gap-6 justify-center items-center">
       
       {/* ─── absolute visual Ghost Cursor tracking overlay ─── */}
+      {/* Fix 1: Denormalize 0.0–1.0 ratios to pixel coordinates */}
       {visitorX !== 0 && visitorY !== 0 && (
         <div
           style={{
             position: 'fixed',
-            left: visitorX,
-            top: visitorY,
+            left: visitorX * (typeof window !== 'undefined' ? window.innerWidth : 1920),
+            top: visitorY * (typeof window !== 'undefined' ? window.innerHeight : 1080),
             pointerEvents: 'none',
             zIndex: 99999,
           }}
@@ -154,7 +170,25 @@ function AdminComms() {
         >
           <MousePointer2 className="w-8 h-8 text-emerald-400 fill-emerald-500/20" />
           <div className="absolute top-8 left-6 bg-black border border-emerald-500/50 text-emerald-400 text-[10px] font-bold px-2 py-0.5 rounded shadow-lg whitespace-nowrap">
-            Guest Session ({visitorX}, {visitorY})
+            Guest ({Math.round(visitorX * 100)}%, {Math.round(visitorY * 100)}%)
+          </div>
+        </div>
+      )}
+
+      {/* Fix 6: Autoplay policy — click-to-play overlay */}
+      {showPlayOverlay && (
+        <div
+          onClick={() => {
+            remoteVideoRef.current?.play();
+            audioRef.current?.play();
+            setShowPlayOverlay(false);
+          }}
+          className="fixed inset-0 z-[99998] bg-black/80 flex items-center justify-center cursor-pointer"
+        >
+          <div className="text-center">
+            <div className="text-emerald-400 text-4xl mb-4">▶</div>
+            <p className="text-emerald-400 text-sm font-mono">CLICK TO ENABLE MEDIA STREAM</p>
+            <p className="text-zinc-500 text-xs mt-1">Browser autoplay policy requires user interaction</p>
           </div>
         </div>
       )}
@@ -202,6 +236,7 @@ function AdminComms() {
                   ref={remoteVideoRef}
                   autoPlay
                   playsInline
+                  muted
                   className="w-full h-full object-cover grayscale sepia contrast-125 brightness-90"
                 />
                 <div className="absolute inset-0 pointer-events-none border border-emerald-500/20" />
@@ -276,6 +311,18 @@ function AdminComms() {
                   {micMuted ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
                 </Button>
 
+                {/* Fix 8: Video toggle button */}
+                <Button
+                  onClick={handleToggleVideo}
+                  className={`w-14 h-14 rounded-full flex items-center justify-center transition-all duration-300 ${
+                    videoMuted
+                      ? 'bg-amber-600 hover:bg-amber-700 text-white shadow-[0_0_20px_rgba(245,158,11,0.2)]'
+                      : 'bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-zinc-800'
+                  }`}
+                >
+                  {videoMuted ? <VideoOff className="w-5 h-5" /> : <Video className="w-5 h-5" />}
+                </Button>
+
                 <Button
                   onClick={handleEndCall}
                   className="w-14 h-14 rounded-full bg-red-950 hover:bg-red-900 border border-red-800 flex items-center justify-center text-red-400 shadow-[0_0_20px_rgba(239,68,68,0.2)] transition-all duration-300"
@@ -315,8 +362,8 @@ function AdminComms() {
         <div className="bg-zinc-950 border border-emerald-900/40 p-4 rounded flex flex-col gap-1 text-xs relative z-20">
           <div className="text-zinc-500 font-bold">&gt; TARGET_COORDINATES:</div>
           <div className="flex items-center gap-4 text-emerald-400 font-bold text-sm">
-            <span>X: {visitorX}px</span>
-            <span>Y: {visitorY}px</span>
+            <span>X: {Math.round(visitorX * 100)}%</span>
+            <span>Y: {Math.round(visitorY * 100)}%</span>
           </div>
         </div>
 

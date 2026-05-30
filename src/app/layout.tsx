@@ -6,7 +6,7 @@ import ThemeProvider from "@/components/ThemeProvider";
 export const metadata: Metadata = {
   title: "WebOS Portfolio — Mohammed & Moamen",
   description:
-    "An interactive Web OS portfolio featuring Mohammed (Node.js/Discord.js Backend Engineer) and Moamen (Creative Developer & UI/UX Engineer). Built with Next.js 15, Zustand, and Framer Motion.",
+    "An interactive Web OS portfolio featuring Mohammed (Node.js/Discord.js Backend Engineer) and Moamen (Creative Developer & UI/UX Engineer). Built with Next.js 16, Zustand, and Framer Motion.",
   keywords: [
     "portfolio",
     "web os",
@@ -24,7 +24,7 @@ export const metadata: Metadata = {
   ],
   openGraph: {
     title: "WebOS Portfolio — Mohammed & Moamen",
-    description: "Interactive Web OS portfolio built with Next.js 15",
+    description: "Interactive Web OS portfolio built with Next.js 16",
     type: "website",
   },
 };
