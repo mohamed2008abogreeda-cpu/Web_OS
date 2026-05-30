@@ -126,9 +126,14 @@ export async function POST(request: NextRequest) {
         httpMetadata: { contentType: file.type },
       });
 
-      // Point image icon directly to the high-speed public R2 CDN/bucket subdomain
-      const assetsDomain = process.env.NEXT_PUBLIC_ASSETS_DOMAIN || "https://assets.yourdomain.com";
-      iconUrl = `${assetsDomain}/${key}`;
+      // Point image icon directly to the high-speed public R2 CDN/bucket subdomain, with fallback to local API storage
+      const cdnDomain = process.env.NEXT_PUBLIC_CDN_DOMAIN;
+      if (cdnDomain) {
+        iconUrl = `${cdnDomain}/${key}`;
+      } else {
+        const origin = request.headers.get("origin") || "http://localhost:3000";
+        iconUrl = `${origin}/api/storage?key=${key}`;
+      }
     }
 
     // 2. Insert SQL Record to D1 Database
@@ -189,8 +194,13 @@ export async function PUT(request: NextRequest) {
         httpMetadata: { contentType: file.type },
       });
 
-      const assetsDomain = process.env.NEXT_PUBLIC_ASSETS_DOMAIN || "https://assets.yourdomain.com";
-      iconUrl = `${assetsDomain}/${key}`;
+      const cdnDomain = process.env.NEXT_PUBLIC_CDN_DOMAIN;
+      if (cdnDomain) {
+        iconUrl = `${cdnDomain}/${key}`;
+      } else {
+        const origin = request.headers.get("origin") || "http://localhost:3000";
+        iconUrl = `${origin}/api/storage?key=${key}`;
+      }
     }
 
     // 2. Update SQL Record in D1
