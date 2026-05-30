@@ -83,11 +83,20 @@ interface R2Bucket {
   delete(keys: string | string[]): Promise<void>;
 }
 
+interface KVNamespace {
+  get(key: string, options?: { type?: "text" | "json" | "arrayBuffer" | "stream"; cacheTtl?: number }): Promise<any>;
+  put(key: string, value: string | ArrayBuffer | ArrayBufferView | ReadableStream, options?: { expiration?: number; expirationTtl?: number; metadata?: any }): Promise<void>;
+  delete(key: string): Promise<void>;
+  list(options?: { prefix?: string; limit?: number; cursor?: string }): Promise<{ keys: { name: string; expiration?: number; metadata?: any }[]; list_complete: boolean; cursor?: string }>;
+}
+
 declare global {
   namespace NodeJS {
     interface ProcessEnv {
       DB?: D1Database;
       BUCKET?: R2Bucket;
+      GLOBAL_STATE?: KVNamespace;
+      ADMIN_SECRET?: string;
     }
   }
 }

@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Toaster } from "sonner";
 import "./globals.css";
 import ThemeProvider from "@/components/ThemeProvider";
+import { PostHogProvider } from "@/components/PostHogProvider";
 
 export const metadata: Metadata = {
   title: "WebOS Portfolio — Mohammed & Moamen",
@@ -48,10 +49,12 @@ export default function RootLayout({
       className="font-sans antialiased"
     >
       <body className="min-h-full bg-black text-white overflow-hidden">
-        <ThemeProvider>
-          {children}
-        </ThemeProvider>
-        <Toaster theme="dark" position="top-right" closeButton richColors />
+        <PostHogProvider>
+          <ThemeProvider>
+            {children}
+          </ThemeProvider>
+          <Toaster theme="dark" position="top-right" closeButton richColors />
+        </PostHogProvider>
       </body>
     </html>
   );

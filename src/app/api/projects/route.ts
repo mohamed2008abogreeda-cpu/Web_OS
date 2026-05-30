@@ -1,43 +1,42 @@
 // ============================================================
-// API: GET /api/projects — Fetch projects from Cloudflare D1 SQL DB
-// falling back gracefully to static mock data if D1 is not initialized.
+// API: /api/projects — D1 SQL & R2 Storage Admin Integration
 // ============================================================
-import { NextRequest, NextResponse } from 'next/server';
-import { PROJECTS } from '@/lib/mockData';
+import { NextRequest, NextResponse } from "next/server";
+import { getD1Database, getR2Bucket } from "@/lib/db";
+import { PROJECTS } from "@/lib/mockData";
 
+/**
+ * GET: Fetch all projects or filter by userId
+ */
 export async function GET(request: NextRequest) {
   try {
-    const userId = request.nextUrl.searchParams.get('userId');
+    const userId = request.nextUrl.searchParams.get("userId");
+    const db = getD1Database();
 
-    // 1. Attempt to query Cloudflare D1 Database
-    if (process.env.DB) {
+    if (db) {
       let query = "SELECT * FROM projects";
       let stmt;
 
       if (userId) {
-        // Map common app profile usernames to database user_ids
         let targetId = userId;
         if (userId === "Mohammed") targetId = "user-1";
         if (userId === "Moamen") targetId = "user-2";
         if (userId === "Team") targetId = "user-team";
 
         if (targetId === "user-team") {
-          // Team sees all projects
-          stmt = process.env.DB.prepare(query + " ORDER BY created_at DESC");
+          stmt = db.prepare(query + " ORDER BY created_at DESC");
         } else {
-          // Filter specifically by user, or common team projects
-          stmt = process.env.DB.prepare(
+          stmt = db.prepare(
             query + " WHERE user_id = ?1 OR user_id = 'user-team' ORDER BY created_at DESC"
           ).bind(targetId);
         }
       } else {
-        stmt = process.env.DB.prepare(query + " ORDER BY created_at DESC");
+        stmt = db.prepare(query + " ORDER BY created_at DESC");
       }
 
       const { results } = await stmt.all();
 
       if (results && results.length > 0) {
-        // Parse SQL types to JSON types safely
         const formattedProjects = results.map((row: any) => {
           let parsedTags: string[] = [];
           try {
@@ -63,7 +62,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // 2. High-performance static fallback from mockData
+    // Static fallback if D1 database is unbound or empty during local Next.js node runs
     let fallbackProjects = PROJECTS;
     if (userId) {
       let targetId = userId;
@@ -79,13 +78,130 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json({ success: true, projects: fallbackProjects });
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    console.error("D1 project fetch error:", message);
+  } catch (error: any) {
     return NextResponse.json(
-      { success: false, error: message },
+      { success: false, error: error.message || "Unknown error occurred" },
       { status: 500 }
     );
   }
 }
 
+/**
+ * POST: Create a new project (Admin CMS with R2 Multipart Uploads)
+ */
+export async function POST(request: NextRequest) {
+  try {
+    const db = getD1Database();
+    const bucket = getR2Bucket();
+
+    if (!db) {
+      throw new Error("D1 Database binding is required for writing database records.");
+    }
+
+    const formData = await request.formData();
+    const id = formData.get("id") as string || `proj-${Math.random().toString(36).substring(2, 9)}`;
+    const userId = formData.get("userId") as string;
+    const title = formData.get("title") as string;
+    const description = formData.get("description") as string || "";
+    const hasIframe = formData.get("hasIframe") === "true" || formData.get("hasIframe") === "1" ? 1 : 0;
+    const projectUrl = formData.get("projectUrl") as string || "";
+    const liveApiEndpoint = formData.get("liveApiEndpoint") as string || null;
+    const tags = formData.get("tags") as string || "[]";
+    
+    let iconUrl = formData.get("iconUrl") as string || "📦";
+
+    // 1. Process Multipart File Upload to R2 Bucket
+    const file = formData.get("image") as File | null;
+    if (file && file.size > 0 && bucket) {
+      const fileExt = file.name.split(".").pop() || "png";
+      const key = `projects/${id}-${Date.now()}.${fileExt}`;
+      const fileBuffer = await file.arrayBuffer();
+
+      // Stream binary to R2
+      await bucket.put(key, fileBuffer, {
+        httpMetadata: { contentType: file.type },
+      });
+
+      // Point image icon to the internal R2 retrieval URL path
+      iconUrl = `/api/storage?key=${key}`;
+    }
+
+    // 2. Insert SQL Record to D1 Database
+    await db
+      .prepare(
+        `INSERT INTO projects (id, user_id, title, description, icon_url, has_iframe, project_url, live_api_endpoint, tags)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)`
+      )
+      .bind(id, userId, title, description, iconUrl, hasIframe, projectUrl, liveApiEndpoint, tags)
+      .run();
+
+    return NextResponse.json({ success: true, projectId: id, iconUrl });
+  } catch (error: any) {
+    return NextResponse.json(
+      { success: false, error: error.message || "Unknown error occurred" },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * PUT: Update an existing project
+ */
+export async function PUT(request: NextRequest) {
+  try {
+    const db = getD1Database();
+    const bucket = getR2Bucket();
+
+    if (!db) {
+      throw new Error("D1 Database binding is required for writing database records.");
+    }
+
+    const formData = await request.formData();
+    const id = formData.get("id") as string;
+    
+    if (!id) {
+      throw new Error("Missing project ID parameter for updating records.");
+    }
+
+    const userId = formData.get("userId") as string;
+    const title = formData.get("title") as string;
+    const description = formData.get("description") as string || "";
+    const hasIframe = formData.get("hasIframe") === "true" || formData.get("hasIframe") === "1" ? 1 : 0;
+    const projectUrl = formData.get("projectUrl") as string || "";
+    const liveApiEndpoint = formData.get("liveApiEndpoint") as string || null;
+    const tags = formData.get("tags") as string || "[]";
+    
+    let iconUrl = formData.get("iconUrl") as string;
+
+    // 1. Process Multipart File Upload if user uploads a new image
+    const file = formData.get("image") as File | null;
+    if (file && file.size > 0 && bucket) {
+      const fileExt = file.name.split(".").pop() || "png";
+      const key = `projects/${id}-${Date.now()}.${fileExt}`;
+      const fileBuffer = await file.arrayBuffer();
+
+      await bucket.put(key, fileBuffer, {
+        httpMetadata: { contentType: file.type },
+      });
+
+      iconUrl = `/api/storage?key=${key}`;
+    }
+
+    // 2. Update SQL Record in D1
+    await db
+      .prepare(
+        `UPDATE projects 
+         SET user_id = ?2, title = ?3, description = ?4, icon_url = ?5, has_iframe = ?6, project_url = ?7, live_api_endpoint = ?8, tags = ?9, updated_at = CURRENT_TIMESTAMP
+         WHERE id = ?1`
+      )
+      .bind(id, userId, title, description, iconUrl, hasIframe, projectUrl, liveApiEndpoint, tags)
+      .run();
+
+    return NextResponse.json({ success: true, projectId: id, iconUrl });
+  } catch (error: any) {
+    return NextResponse.json(
+      { success: false, error: error.message || "Unknown error occurred" },
+      { status: 500 }
+    );
+  }
+}

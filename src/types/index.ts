@@ -85,6 +85,8 @@ export interface OSState {
   isSpectating: boolean;
   activeSpectatorSession: string | null;
   ghostCursor: { x: number; y: number } | null;
+  isBsod?: boolean;
+  setBsod?: (val: boolean) => void;
 
   // Actions
   setBootPhase: (phase: BootPhase) => void;

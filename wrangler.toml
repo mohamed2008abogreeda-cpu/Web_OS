@@ -38,5 +38,9 @@ bucket_name = "portfolio-assets"
 # wrangler secret put ADMIN_PASSWORD
 # wrangler secret put PUSHER_APP_ID
 # wrangler secret put PUSHER_SECRET
-# wrangler secret put NEXT_PUBLIC_PUSHER_KEY
 # wrangler secret put DISCORD_WEBHOOK_URL
+
+# ── KV Namespaces (Active) ──────────────────────────
+[[kv_namespaces]]
+binding = "GLOBAL_STATE"
+id = "kv-global-state-placeholder-id"
