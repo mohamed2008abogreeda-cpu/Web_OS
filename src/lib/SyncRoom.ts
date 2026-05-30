@@ -1,12 +1,25 @@
 /**
  * SyncRoom Durable Object
  * Handles native WebSocket connections for signaling and real-time state sync.
- * Maintains an in-memory map of connected clients for fast broadcasting without D1 database calls.
+ * Restructured to support Cloudflare Durable Objects WebSocket Hibernation API for zero idle costs.
  */
 export class SyncRoom {
   private sessions = new Map<any, { role: string; sessionId?: string; roomId?: string }>();
 
-  constructor(private state: any, private env: any) {}
+  constructor(private state: any, private env: any) {
+    // Restore active sessions map on wake up/re-instantiation from the persistent DO state
+    try {
+      const activeSockets = this.state.getWebSockets();
+      for (const ws of activeSockets) {
+        const attachment = ws.deserializeAttachment();
+        if (attachment) {
+          this.sessions.set(ws, attachment);
+        }
+      }
+    } catch (e) {
+      console.error("[SyncRoom Constructor Restore Error]:", e);
+    }
+  }
 
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
@@ -59,9 +72,13 @@ export class SyncRoom {
     const sessionId = url.searchParams.get("sessionId") || "";
     const roomId = url.searchParams.get("roomId") || "";
 
-    // Accept and register the WebSocket connection in the Durable Object context
+    // Register WebSocket connection in Durable Object Hibernation context
     this.state.acceptWebSocket(server);
-    this.sessions.set(server, { role, sessionId, roomId });
+
+    // Persist per-connection metadata using structured clone attachment
+    const sessionInfo = { role, sessionId, roomId };
+    server.serializeAttachment(sessionInfo);
+    this.sessions.set(server, sessionInfo);
 
     // Send instant handshake acknowledgement
     server.send(JSON.stringify({ type: "handshake", status: "connected" }));
@@ -73,13 +90,13 @@ export class SyncRoom {
     });
   }
 
-  // Handle incoming messages on a WebSocket connection
+  // Handle incoming messages on a WebSocket connection (Hibernation Lifecycle)
   async webSocketMessage(ws: any, message: string | ArrayBuffer) {
     try {
       if (typeof message !== "string") return;
       const data = JSON.parse(message);
 
-      const senderInfo = this.sessions.get(ws);
+      const senderInfo = this.sessions.get(ws) || ws.deserializeAttachment();
       if (!senderInfo) return;
 
       // Visitor sending state/coordinates updates
@@ -116,12 +133,12 @@ export class SyncRoom {
     }
   }
 
-  // Handle connection closure
+  // Handle connection closure (Hibernation Lifecycle)
   async webSocketClose(ws: any, code: number, reason: string, wasClean: boolean) {
     this.sessions.delete(ws);
   }
 
-  // Handle connection error
+  // Handle connection error (Hibernation Lifecycle)
   async webSocketError(ws: any, error: any) {
     this.sessions.delete(ws);
   }
@@ -129,8 +146,10 @@ export class SyncRoom {
   // Helper: Broadcast state updates to all active Admin sessions
   private broadcastToAdmins(payload: any) {
     const msg = JSON.stringify(payload);
-    for (const [socket, info] of this.sessions.entries()) {
-      if (info.role === "admin") {
+    const activeSockets = this.state.getWebSockets();
+    for (const socket of activeSockets) {
+      const info = this.sessions.get(socket) || socket.deserializeAttachment();
+      if (info && info.role === "admin") {
         try {
           socket.send(msg);
         } catch {
@@ -146,8 +165,10 @@ export class SyncRoom {
       type: "admin-command",
       payload: { type, payload }
     });
-    for (const [socket, info] of this.sessions.entries()) {
-      if (info.role === "visitor" && info.sessionId === sessionId) {
+    const activeSockets = this.state.getWebSockets();
+    for (const socket of activeSockets) {
+      const info = this.sessions.get(socket) || socket.deserializeAttachment();
+      if (info && info.role === "visitor" && info.sessionId === sessionId) {
         try {
           socket.send(msg);
         } catch {
@@ -165,8 +186,10 @@ export class SyncRoom {
       signalType: type,
       payload
     });
-    for (const [socket, info] of this.sessions.entries()) {
-      if (info.roomId === roomId && info.role !== role) {
+    const activeSockets = this.state.getWebSockets();
+    for (const socket of activeSockets) {
+      const info = this.sessions.get(socket) || socket.deserializeAttachment();
+      if (info && info.roomId === roomId && info.role !== role) {
         try {
           socket.send(msg);
         } catch {
