@@ -55,6 +55,7 @@ function AdminComms() {
   // ─── Multi-Session Spectator Tracking State (God Mode) ───
   const [sessions, setSessions] = useState<Record<string, VisitorSession>>({});
   const [activeSessionId, setActiveSessionId] = useState<string>('');
+  const [broadcastingSessions, setBroadcastingSessions] = useState<Record<string, boolean>>({});
   const [logs, setLogs] = useState<string[]>([
     `> [${new Date().toLocaleTimeString()}] INTERVENTION TERMINAL INITIALIZED. READY FOR COMMAND DISPATCH.`
   ]);
@@ -279,6 +280,44 @@ function AdminComms() {
       } finally {
         setIsDispatching(false);
       }
+    }
+  };
+
+  // Dispatch SPECTATE_COMMAND over dynamic DO WebSockets
+  const toggleSpectatorUplink = () => {
+    if (!activeSessionId) {
+      setLogs(prev => [...prev, `> [${new Date().toLocaleTimeString()}] [WARN] NO ACTIVE SESSION CHOSEN FOR UPLINK.`]);
+      return;
+    }
+
+    const socket = socketRef.current;
+    if (!socket || socket.readyState !== WebSocket.OPEN) {
+      setLogs(prev => [...prev, `> [${new Date().toLocaleTimeString()}] [FAIL] WS CONNECTION OFFLINE. CANNOT TOGGLE UPLINK.`]);
+      return;
+    }
+
+    const targetSession = activeSessionId;
+    const isCurrentlyBroadcasting = !!broadcastingSessions[targetSession];
+    const newAction = isCurrentlyBroadcasting ? 'STOP' : 'START';
+
+    try {
+      socket.send(JSON.stringify({
+        type: 'SPECTATE_COMMAND',
+        targetSessionId: targetSession,
+        action: newAction
+      }));
+
+      setBroadcastingSessions(prev => ({
+        ...prev,
+        [targetSession]: !isCurrentlyBroadcasting
+      }));
+
+      setLogs(prev => [
+        ...prev,
+        `> [${new Date().toLocaleTimeString()}] [OK] SPECTATOR UPLINK ${newAction === 'START' ? 'INITIATED' : 'SEVERED'} FOR SESSION: ${targetSession.slice(0, 8)}.`
+      ]);
+    } catch (err: any) {
+      setLogs(prev => [...prev, `> [${new Date().toLocaleTimeString()}] [FAIL] WS UPLINK SEND ERROR: ${err.message || err}`]);
     }
   };
 
@@ -630,6 +669,28 @@ function AdminComms() {
               >
                 <RotateCcw className="w-4 h-4" />
                 <span>[ SWITCH_USER ]</span>
+              </Button>
+
+              <Button
+                onClick={toggleSpectatorUplink}
+                disabled={!activeSessionId}
+                className={`col-span-2 border rounded py-4 text-xs font-bold flex flex-col items-center justify-center gap-1.5 transition-all hover:scale-[1.01] disabled:opacity-30 disabled:hover:scale-100 ${
+                  broadcastingSessions[activeSessionId]
+                    ? 'bg-amber-950/60 hover:bg-amber-900/80 text-amber-400 border-amber-900 shadow-[0_0_15px_rgba(245,158,11,0.05)]'
+                    : 'bg-emerald-950/60 hover:bg-emerald-900/80 text-emerald-400 border-emerald-900 shadow-[0_0_15px_rgba(16,185,129,0.05)]'
+                }`}
+              >
+                {broadcastingSessions[activeSessionId] ? (
+                  <>
+                    <PhoneOff className="w-4 h-4 animate-pulse" />
+                    <span>[ SEVER SPECTATOR UPLINK ]</span>
+                  </>
+                ) : (
+                  <>
+                    <MousePointer2 className="w-4 h-4" />
+                    <span>[ INITIATE SPECTATOR UPLINK ]</span>
+                  </>
+                )}
               </Button>
 
             </div>

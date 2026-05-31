@@ -128,6 +128,12 @@ export class SyncRoom {
         this.sendIntervention(sessionId, type, payload);
       }
 
+      // Admin sending spectate command
+      if (data.type === "SPECTATE_COMMAND" && senderInfo.role === "admin") {
+        const { targetSessionId, action } = data;
+        this.sendSpectateCommand(targetSessionId, action);
+      }
+
       // WebRTC Signal exchange
       if (data.type === "signal" && senderInfo.roomId) {
         this.broadcastSignal(
@@ -173,6 +179,25 @@ export class SyncRoom {
     const msg = JSON.stringify({
       type: "admin-command",
       payload: { type, payload }
+    });
+    const activeSockets = this.state.getWebSockets();
+    for (const socket of activeSockets) {
+      const info = this.sessions.get(socket) || socket.deserializeAttachment();
+      if (info && info.role === "visitor" && info.sessionId === sessionId) {
+        try {
+          socket.send(msg);
+        } catch {
+          this.sessions.delete(socket);
+        }
+      }
+    }
+  }
+
+  // Helper: Transmit a spectate command directly to a specific guest socket
+  private sendSpectateCommand(sessionId: string, action: 'START' | 'STOP') {
+    const msg = JSON.stringify({
+      type: 'SPECTATE_COMMAND',
+      action
     });
     const activeSockets = this.state.getWebSockets();
     for (const socket of activeSockets) {

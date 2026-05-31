@@ -1,7 +1,9 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useOSStore } from '@/store/useOSStore';
+import { SYSTEM_APPS } from '@/lib/mockData';
+import { LINUX_APPS } from '@/components/desktops/linux/LinuxDesktop';
 
 /**
  * Visitor Spectator Sync Hook (Broadcaster & bi-directional Command Listener)
@@ -17,6 +19,14 @@ export function useSpectatorSync() {
   const previousY = useRef<number>(0);
   const previousWindowHash = useRef<string>('');
   const socketRef = useRef<WebSocket | null>(null);
+
+  const [isBroadcasting, setIsBroadcasting] = useState(false);
+  const isBroadcastingRef = useRef(false);
+
+  // Sync state to ref to avoid stale closure in window event listener
+  useEffect(() => {
+    isBroadcastingRef.current = isBroadcasting;
+  }, [isBroadcasting]);
 
   useEffect(() => {
     const isSpectating = useOSStore.getState().isSpectating;
@@ -48,6 +58,19 @@ export function useSpectatorSync() {
         try {
           const data = JSON.parse(event.data);
 
+          // Handle incoming on-demand telemetry command
+          if (data.type === 'SPECTATE_COMMAND') {
+            const action = data.action;
+            if (action === 'START') {
+              setIsBroadcasting(true);
+              console.log('[SpectatorSync WS] Spectator uplink initiated by admin');
+            } else if (action === 'STOP') {
+              setIsBroadcasting(false);
+              console.log('[SpectatorSync WS] Spectator uplink severed by admin');
+            }
+            return;
+          }
+
           // Handle incoming admin remote interventions in real-time
           if (data.type === 'admin-command') {
             const command = data.payload;
@@ -60,9 +83,6 @@ export function useSpectatorSync() {
             } else if (command.type === "OPEN_MODAL") {
               const appId = command.payload?.appId;
               if (appId) {
-                const { SYSTEM_APPS } = require('@/lib/mockData');
-                const { LINUX_APPS } = require('@/components/desktops/linux/LinuxDesktop');
-                
                 const app = 
                   SYSTEM_APPS.find((a: any) => a.id === appId) || 
                   LINUX_APPS.find((a: any) => a.id === appId);
@@ -97,6 +117,9 @@ export function useSpectatorSync() {
 
     // 2. Track Mouse Movement and Broadcast coordinates
     const handleMouseMove = (e: MouseEvent) => {
+      // Zero-Trust Enforce Dormant Broadcasting check (only broadcast if spectating is initiated)
+      if (!isBroadcastingRef.current) return;
+
       const now = Date.now();
       
       // Strict 1000ms Throttling gate
