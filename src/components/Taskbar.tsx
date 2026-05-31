@@ -1,5 +1,6 @@
 import React from 'react';
 import { useOSStore } from '@/store/useOSStore';
+import { useShallow } from 'zustand/react/shallow';
 import { Terminal, Phone, FolderGit2, Settings, User } from 'lucide-react';
 import { SYSTEM_APPS } from '@/lib/mockData';
 import type { LucideIcon } from 'lucide-react';
@@ -15,9 +16,15 @@ const ICON_MAP: Record<string, LucideIcon> = {
 
 const Taskbar = () => {
   const currentUser = useOSStore((state) => state.currentUser);
-  const openApps = useOSStore((state) => state.windows);
   const openWindow = useOSStore((state) => state.openWindow);
   const activeWindowId = useOSStore((state) => state.activeWindowId);
+
+  // Select only mapped appIds dynamically to avoid re-renders when coordinates or sizes change
+  const openAppIds = useOSStore(
+    useShallow((state) => state.windows.map((w) => w.appId))
+  );
+
+  const openAppsCount = openAppIds.length;
 
   if (currentUser === "Team") {
     return (
@@ -32,7 +39,7 @@ const Taskbar = () => {
               [{app.id}]
             </button>
           ))}
-          <span className="ml-4 text-white/40">PROCESSES: {openApps.length}</span>
+          <span className="ml-4 text-white/40">PROCESSES: {openAppsCount}</span>
         </div>
       </div>
     );
@@ -44,7 +51,7 @@ const Taskbar = () => {
            style={{ backdropFilter: "var(--os-blur)", WebkitBackdropFilter: "var(--os-blur)" }}>
         {SYSTEM_APPS.map(app => {
           const Icon = ICON_MAP[app.id];
-          const isActive = openApps.some(w => w.appId === app.id);
+          const isActive = openAppIds.includes(app.id);
           return (
             <div key={app.id} onClick={() => openWindow(app)} className="relative group flex justify-center">
               <div className={`w-11 h-11 rounded-full flex items-center justify-center cursor-pointer transition-all duration-300 hover:scale-[1.2] hover:-translate-y-2 ${isActive ? 'bg-os-accent/20 border-os-accent/50' : 'bg-white/5 border-white/10 hover:bg-white/10'} border`}>
@@ -64,7 +71,7 @@ const Taskbar = () => {
            style={{ backdropFilter: "var(--os-blur)", WebkitBackdropFilter: "var(--os-blur)" }}>
         {SYSTEM_APPS.map(app => {
           const Icon = ICON_MAP[app.id];
-          const isActive = openApps.some(w => w.appId === app.id);
+          const isActive = openAppIds.includes(app.id);
           const isFocused = activeWindowId?.includes(app.id);
           return (
             <div key={app.id} onClick={() => openWindow(app)} className={`w-10 h-10 rounded-md relative cursor-pointer flex items-center justify-center transition-all duration-200 ${isActive ? 'bg-white/10' : 'hover:bg-white/5'}`}>
@@ -83,3 +90,4 @@ const Taskbar = () => {
 };
 
 export default Taskbar;
+

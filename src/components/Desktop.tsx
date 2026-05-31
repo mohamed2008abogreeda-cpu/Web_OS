@@ -1,5 +1,6 @@
 'use client';
 import { useOSStore } from '@/store/useOSStore';
+import { useShallow } from 'zustand/react/shallow';
 import dynamic from 'next/dynamic';
 
 const LinuxEnvironment = dynamic(() => import('./desktops/linux/LinuxDesktop'), { ssr: false });
@@ -11,8 +12,12 @@ import { useEffect, useState } from 'react';
 import { AnimatePresence } from 'framer-motion';
 
 export default function Desktop() {
-  const currentUser = useOSStore(s => s.currentUser);
-  const isMobile = useOSStore(s => s.isMobile);
+  const { currentUser, isMobile } = useOSStore(
+    useShallow((s) => ({
+      currentUser: s.currentUser,
+      isMobile: s.isMobile,
+    }))
+  );
   const [activeUser, setActiveUser] = useState(currentUser);
 
   useEffect(() => {
@@ -31,3 +36,4 @@ export default function Desktop() {
     </AnimatePresence>
   );
 }
+

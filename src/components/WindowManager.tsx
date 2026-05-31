@@ -3,6 +3,7 @@
 // WindowManager — Renders all open windows
 // ============================================================
 import { useOSStore } from '@/store/useOSStore';
+import { useShallow } from 'zustand/react/shallow';
 import WindowWrapper from './WindowWrapper';
 import ErrorBoundary from './ErrorBoundary';
 
@@ -26,24 +27,25 @@ const COMPONENT_MAP: Record<string, React.ComponentType<{ windowId: string }>> =
 };
 
 export default function WindowManager() {
-  const windows = useOSStore((s) => s.windows);
+  const openWindows = useOSStore(
+    useShallow((s) => s.windows.filter((w) => w.isOpen))
+  );
 
   return (
     <>
-      {windows
-        .filter((w) => w.isOpen)
-        .map((win, index) => {
-          const Component = COMPONENT_MAP[win.component];
-          if (!Component) return null;
+      {openWindows.map((win, index) => {
+        const Component = COMPONENT_MAP[win.component];
+        if (!Component) return null;
 
-          return (
-            <WindowWrapper key={win.id} window={{...win, zIndex: 100 + index}}>
-              <ErrorBoundary windowId={win.id}>
-                <Component windowId={win.id} />
-              </ErrorBoundary>
-            </WindowWrapper>
-          );
-        })}
+        return (
+          <WindowWrapper key={win.id} window={{...win, zIndex: 100 + index}}>
+            <ErrorBoundary windowId={win.id}>
+              <Component windowId={win.id} />
+            </ErrorBoundary>
+          </WindowWrapper>
+        );
+      })}
     </>
   );
 }
+

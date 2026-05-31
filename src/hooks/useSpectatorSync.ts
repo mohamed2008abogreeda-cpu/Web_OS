@@ -23,15 +23,16 @@ export function useSpectatorSync() {
   const [isBroadcasting, setIsBroadcasting] = useState(false);
   const isBroadcastingRef = useRef(false);
 
+  // Granular, strict react subscriptions to prevent parent re-renders on other state changes
+  const isSpectating = useOSStore((s) => s.isSpectating);
+  const sessionId = useOSStore((s) => s.sessionId);
+
   // Sync state to ref to avoid stale closure in window event listener
   useEffect(() => {
     isBroadcastingRef.current = isBroadcasting;
   }, [isBroadcasting]);
 
   useEffect(() => {
-    const isSpectating = useOSStore.getState().isSpectating;
-    const sessionId = useOSStore.getState().sessionId;
-    
     // Admins do not broadcast, they only spectate
     if (isSpectating) return;
 
@@ -182,5 +183,6 @@ export function useSpectatorSync() {
         socketRef.current.close();
       }
     };
-  }, []);
+  }, [isSpectating, sessionId]);
 }
+
