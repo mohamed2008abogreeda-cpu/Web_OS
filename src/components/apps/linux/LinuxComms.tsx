@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Terminal, Shield, Lock, Radio } from 'lucide-react';
+import { useOSStore } from '@/store/useOSStore';
 import { useWebRTCCall } from '@/hooks/useWebRTCCall';
 
 type ConnectionPhase = 'idle' | 'handshaking' | 'pinging' | 'connected';
@@ -23,6 +24,8 @@ export default function LinuxComms() {
   const [chatInput, setChatInput] = useState('');
   const chatEndRef = useRef<HTMLDivElement | null>(null);
 
+  const chatMessages = useOSStore((s) => s.chatMessages);
+
   const {
     status,
     callStatus,
@@ -33,14 +36,13 @@ export default function LinuxComms() {
     endCall,
     toggleMic,
     toggleVideo,
-    messages,
     sendChatMessage
   } = useWebRTCCall(activeRoomId, false);
 
   // Auto-scroll chat viewports to stay centered on incoming/outgoing text payloads
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, [chatMessages]);
 
   const handleSendChat = (e: React.FormEvent) => {
     e.preventDefault();
@@ -295,15 +297,15 @@ export default function LinuxComms() {
           <div className="flex-[1.5] bg-black border border-emerald-900 rounded p-3 flex flex-col min-h-0 shadow-[0_0_20px_rgba(16,185,129,0.05)] h-[320px]">
             <div className="text-[10px] text-emerald-400 font-bold mb-2 pb-1 border-b border-emerald-900/60 flex items-center justify-between shrink-0">
               <span>[SECURE_COMS_CHAT] READY_FOR_TX</span>
-              <span className="text-zinc-500 text-[8px]">LOGS: {messages.length}</span>
+              <span className="text-zinc-500 text-[8px]">LOGS: {chatMessages.length}</span>
             </div>
             
             {/* Chat history list */}
             <div className="flex-1 overflow-y-auto space-y-2 pr-1 scrollbar-thin mb-2 min-h-0">
-              {messages.length === 0 ? (
+              {chatMessages.length === 0 ? (
                 <div className="text-[10px] text-emerald-800 italic p-2">&gt; Encrypted channel quiet. No traffic detected.</div>
               ) : (
-                messages.map((msg, idx) => (
+                chatMessages.map((msg, idx) => (
                   <div key={idx} className={`text-[10px] p-2 border rounded ${
                     msg.sender === 'visitor' 
                       ? 'border-emerald-900/60 bg-emerald-950/5 text-emerald-400' 

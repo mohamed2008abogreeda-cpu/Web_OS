@@ -107,4 +107,9 @@ export interface OSState {
   
   initSpectator: (targetSessionId: string) => void;
   syncRemoteState: (windows: WindowState[], cursor?: { x: number; y: number }) => void;
+
+  // Chat Persistence
+  chatMessages: Array<{ sender: 'admin' | 'visitor'; text: string; timestamp: number }>;
+  addChatMessage: (msg: { sender: 'admin' | 'visitor'; text: string; timestamp: number }) => void;
+  clearChat: () => void;
 }

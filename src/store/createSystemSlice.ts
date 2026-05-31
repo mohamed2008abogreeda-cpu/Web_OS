@@ -37,6 +37,9 @@ export const createSystemSlice: StateCreator<
     | 'switchUser'
     | 'toggleStartMenu'
     | 'setAdminAuthenticated'
+    | 'chatMessages'
+    | 'addChatMessage'
+    | 'clearChat'
   >
 > = (set, get) => ({
   currentUser: null,
@@ -49,6 +52,7 @@ export const createSystemSlice: StateCreator<
   isMobile: false,
   isAdminAuthenticated: false,
   isBsod: false,
+  chatMessages: [],
 
   setBootPhase: (phase: BootPhase) => set({ bootPhase: phase }),
   setMobile: (val: boolean) => set({ isMobile: val }),
@@ -109,4 +113,7 @@ export const createSystemSlice: StateCreator<
 
   toggleStartMenu: () => set((state) => ({ isStartMenuOpen: !state.isStartMenuOpen })),
   setAdminAuthenticated: (val: boolean) => set({ isAdminAuthenticated: val }),
+
+  addChatMessage: (msg) => set((state) => ({ chatMessages: [...state.chatMessages, msg] })),
+  clearChat: () => set({ chatMessages: [] }),
 });

@@ -43,7 +43,7 @@ export function useSpectatorSync() {
     // Admins do not broadcast, they only spectate
     if (isSpectating) return;
 
-    let reconnectDelay = 1000;
+    let retryCount = 0;
     let isCleanup = false;
 
     // Establish persistent, native WebSocket connection with exponential backoff reconnection
@@ -59,7 +59,7 @@ export function useSpectatorSync() {
 
       ws.onopen = () => {
         console.log('[SpectatorSync WS] Connected as visitor:', sessionId);
-        reconnectDelay = 1000; // Reset reconnection delay on successful connection
+        retryCount = 0; // Reset retryCount on successful connection
       };
 
       ws.onmessage = (event) => {
@@ -110,9 +110,15 @@ export function useSpectatorSync() {
 
       ws.onclose = () => {
         if (isCleanup) return;
-        console.log(`[SpectatorSync WS] Disconnected. Reconnecting in ${reconnectDelay}ms...`);
-        setTimeout(connect, reconnectDelay);
-        reconnectDelay = Math.min(reconnectDelay * 2, 30000); // Backoff up to 30 seconds
+
+        // Thundering Herd Prevention: Jittered Exponential Backoff
+        const backoff = Math.min(1000 * (2 ** retryCount), 10000);
+        const jitter = Math.floor(Math.random() * 500);
+        const totalDelay = backoff + jitter;
+
+        console.log(`[SpectatorSync WS] Disconnected. Reconnecting in ${totalDelay}ms (retryCount: ${retryCount})...`);
+        setTimeout(connect, totalDelay);
+        retryCount++;
       };
 
       ws.onerror = (err) => {

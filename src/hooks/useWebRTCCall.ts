@@ -5,6 +5,7 @@
  * Signaling: Durable Object WebSockets for session metadata exchange
  */
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { useOSStore } from '@/store/useOSStore';
 
 type CallStatus = 'idle' | 'connecting' | 'ready' | 'ringing' | 'active' | 'ended' | 'error';
 
@@ -13,7 +14,10 @@ export function useWebRTCCall(roomId: string, isAdmin: boolean) {
   const [connected, setConnected] = useState(false);
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
-  const [messages, setMessages] = useState<{ sender: 'admin' | 'visitor'; text: string; timestamp: number }[]>([]);
+  
+  const chatMessages = useOSStore((s) => s.chatMessages);
+  const addChatMessage = useOSStore((s) => s.addChatMessage);
+  const clearChat = useOSStore((s) => s.clearChat);
 
   const localStreamRef = useRef<MediaStream | null>(null);
   const remoteStreamRef = useRef<MediaStream | null>(null);
@@ -176,7 +180,7 @@ export function useWebRTCCall(roomId: string, isAdmin: boolean) {
         type: 'CHAT_MESSAGE',
         payload: chatMsg
       }));
-      setMessages((prev) => [...prev, chatMsg]);
+      addChatMessage(chatMsg);
     }
   }, [myRole]);
 
@@ -186,7 +190,7 @@ export function useWebRTCCall(roomId: string, isAdmin: boolean) {
     mountedRef.current = true;
     setCallStatus('connecting');
 
-    let reconnectDelay = 1000;
+    let retryCount = 0;
     let isCleanup = false;
 
     const connect = () => {
@@ -202,7 +206,7 @@ export function useWebRTCCall(roomId: string, isAdmin: boolean) {
       ws.onopen = () => {
         console.log(`[WebRTCCall WS] Connected to call room ${roomId} as ${myRole}`);
         if (mountedRef.current) setCallStatus('ready');
-        reconnectDelay = 1000;
+        retryCount = 0; // Reset retryCount on successful connection
       };
 
       ws.onmessage = (event) => {
@@ -217,7 +221,7 @@ export function useWebRTCCall(roomId: string, isAdmin: boolean) {
             });
           } else if (data.type === 'CHAT_MESSAGE') {
             if (data.payload && data.payload.sender !== myRole) {
-              setMessages((prev) => [...prev, data.payload]);
+              addChatMessage(data.payload);
             }
           }
         } catch (err) {
@@ -227,9 +231,15 @@ export function useWebRTCCall(roomId: string, isAdmin: boolean) {
 
       ws.onclose = () => {
         if (isCleanup) return;
-        console.log(`[WebRTCCall WS] Disconnected. Reconnecting in ${reconnectDelay}ms...`);
-        setTimeout(connect, reconnectDelay);
-        reconnectDelay = Math.min(reconnectDelay * 2, 30000);
+
+        // Thundering Herd Prevention: Jittered Exponential Backoff
+        const backoff = Math.min(1000 * (2 ** retryCount), 10000);
+        const jitter = Math.floor(Math.random() * 500);
+        const totalDelay = backoff + jitter;
+
+        console.log(`[WebRTCCall WS] Disconnected. Reconnecting in ${totalDelay}ms (retryCount: ${retryCount})...`);
+        setTimeout(connect, totalDelay);
+        retryCount++;
       };
 
       ws.onerror = (err) => {
@@ -442,7 +452,7 @@ export function useWebRTCCall(roomId: string, isAdmin: boolean) {
     endCall,
     toggleMic,
     toggleVideo,
-    messages,
+    messages: chatMessages,
     sendChatMessage
   };
 }

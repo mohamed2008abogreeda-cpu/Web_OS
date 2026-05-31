@@ -63,6 +63,8 @@ function AdminComms() {
   const [chatInput, setChatInput] = useState('');
   const chatEndRef = useRef<HTMLDivElement | null>(null);
 
+  const chatMessages = useOSStore((s) => s.chatMessages);
+
   // Initialize WebRTC secure P2P media hook
   const {
     status,
@@ -76,14 +78,13 @@ function AdminComms() {
     endCall,
     toggleMic,
     toggleVideo,
-    messages,
     sendChatMessage
   } = useWebRTCCall(roomId || '', true);
 
   // Auto-scroll chat viewports to stay centered on incoming/outgoing text payloads
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, [chatMessages]);
 
   const handleSendChat = (e: React.FormEvent) => {
     e.preventDefault();
@@ -440,15 +441,15 @@ function AdminComms() {
             <div className="flex-grow flex flex-col bg-black border border-zinc-900 rounded p-3 mb-4 min-h-[220px] max-h-[300px] overflow-hidden">
               <div className="text-[9px] text-emerald-400 font-bold mb-2 pb-1 border-b border-emerald-950/60 flex items-center justify-between shrink-0">
                 <span>[COMMAND_COMS_CHAT] UPLINK_ACTIVE</span>
-                <span className="text-zinc-500 text-[8px]">LOGS: {messages.length}</span>
+                <span className="text-zinc-500 text-[8px]">LOGS: {chatMessages.length}</span>
               </div>
               
               {/* Chat history list */}
               <div className="flex-grow overflow-y-auto space-y-2 pr-1 scrollbar-thin min-h-0 mb-2">
-                {messages.length === 0 ? (
+                {chatMessages.length === 0 ? (
                   <div className="text-[9px] text-emerald-800 italic p-2">&gt; Secure room established. Encrypted channel quiet.</div>
                 ) : (
-                  messages.map((msg, idx) => (
+                  chatMessages.map((msg, idx) => (
                     <div key={idx} className={`text-[9px] p-2 border rounded ${
                       msg.sender === 'admin' 
                         ? 'border-amber-900/60 bg-amber-950/5 text-amber-400' 
