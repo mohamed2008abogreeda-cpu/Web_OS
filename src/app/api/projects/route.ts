@@ -223,6 +223,18 @@ export async function PUT(request: NextRequest) {
     
     let iconUrl = formData.get("iconUrl") as string;
 
+    // Retrieve project icon url first to clean up R2 file if applicable to prevent orphaned objects
+    let oldIconUrl = "";
+    try {
+      const selectStmt = db.prepare("SELECT icon_url FROM projects WHERE id = ?1").bind(id);
+      const oldProject = (await selectStmt.first()) as any;
+      if (oldProject && oldProject.icon_url) {
+        oldIconUrl = oldProject.icon_url;
+      }
+    } catch (err) {
+      console.warn("[PUT Projects Route] Failed to fetch old iconUrl for cleanup:", err);
+    }
+
     // 1. Process Multipart File Upload if user uploads a new image
     const file = formData.get("image") as File | null;
     if (file && file.size > 0 && bucket) {
@@ -233,6 +245,20 @@ export async function PUT(request: NextRequest) {
       await bucket.put(key, fileBuffer, {
         httpMetadata: { contentType: file.type },
       });
+
+      // Cleanup old R2 file to prevent orphaned objects
+      if (oldIconUrl && oldIconUrl.includes("projects/")) {
+        try {
+          const parts = oldIconUrl.split("projects/");
+          if (parts.length > 1) {
+            const oldKey = `projects/${parts[1]}`;
+            await bucket.delete(oldKey);
+            console.log("[PUT Projects Route] Cleaned up orphaned R2 object:", oldKey);
+          }
+        } catch (err) {
+          console.warn("[PUT Projects Route] Orphaned R2 object cleanup failed:", err);
+        }
+      }
 
       const cdnDomain = process.env.NEXT_PUBLIC_CDN_DOMAIN;
       if (cdnDomain) {
