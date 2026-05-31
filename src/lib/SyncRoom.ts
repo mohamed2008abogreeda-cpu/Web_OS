@@ -68,9 +68,18 @@ export class SyncRoom {
     const pair = new WebSocketPair();
     const [client, server] = Object.values(pair) as [any, any];
 
-    const role = url.searchParams.get("role") || "visitor";
+    let role = url.searchParams.get("role") || "visitor";
+    const authToken = url.searchParams.get("auth_token") || "";
     const sessionId = url.searchParams.get("sessionId") || "";
     const roomId = url.searchParams.get("roomId") || "";
+
+    // Zero-Trust Enforce Socket Role Authentication for Admin Role
+    if (role === "admin") {
+      const adminSecret = this.env.ADMIN_SECRET || "admin-secret-passcode";
+      if (!authToken || authToken !== adminSecret) {
+        role = "visitor"; // Gracefully downgrade unverified sessions to prevent spoofing
+      }
+    }
 
     // Register WebSocket connection in Durable Object Hibernation context
     this.state.acceptWebSocket(server);

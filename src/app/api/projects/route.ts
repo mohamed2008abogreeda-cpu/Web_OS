@@ -6,6 +6,26 @@ import { getD1Database, getR2Bucket } from "@/lib/db";
 import { PROJECTS } from "@/lib/mockData";
 
 /**
+ * Edge-compatible admin session validator
+ */
+async function validateAdmin(request: NextRequest): Promise<boolean> {
+  const adminSession = request.cookies.get('admin_session')?.value || 
+                       request.headers.get('Authorization')?.replace('Bearer ', '');
+  if (!adminSession) return false;
+
+  const adminSecret = process.env.ADMIN_SECRET || 'admin-secret-passcode';
+  
+  // Compute session token via browser-standard Web Crypto API
+  const encoder = new TextEncoder();
+  const data = encoder.encode(adminSecret);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  const expectedToken = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+
+  return adminSession === expectedToken;
+}
+
+/**
  * GET: Fetch all projects or filter by userId
  */
 export async function GET(request: NextRequest) {
@@ -95,6 +115,12 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
+    // Zero-Trust Enforce Admin Authentication
+    const isAdminValid = await validateAdmin(request);
+    if (!isAdminValid) {
+      return new Response("Unauthorized", { status: 401 });
+    }
+
     const db = getD1Database();
     const bucket = getR2Bucket();
 
@@ -159,6 +185,12 @@ export async function POST(request: NextRequest) {
  */
 export async function PUT(request: NextRequest) {
   try {
+    // Zero-Trust Enforce Admin Authentication
+    const isAdminValid = await validateAdmin(request);
+    if (!isAdminValid) {
+      return new Response("Unauthorized", { status: 401 });
+    }
+
     const db = getD1Database();
     const bucket = getR2Bucket();
 
@@ -214,6 +246,53 @@ export async function PUT(request: NextRequest) {
       .run();
 
     return NextResponse.json({ success: true, projectId: id, iconUrl });
+  } catch (error: any) {
+    return NextResponse.json(
+      { success: false, error: error.message || "Unknown error occurred" },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * DELETE: Delete a project (Admin CMS with R2 file cleanup)
+ */
+export async function DELETE(request: NextRequest) {
+  try {
+    // Zero-Trust Enforce Admin Authentication
+    const isAdminValid = await validateAdmin(request);
+    if (!isAdminValid) {
+      return new Response("Unauthorized", { status: 401 });
+    }
+
+    const db = getD1Database();
+    if (!db) {
+      throw new Error("D1 Database binding is required for deleting database records.");
+    }
+
+    const id = request.nextUrl.searchParams.get("id");
+    if (!id) {
+      throw new Error("Missing project ID parameter for deleting records.");
+    }
+
+    // Retrieve project icon url first to clean up R2 file if applicable
+    const selectStmt = db.prepare("SELECT icon_url FROM projects WHERE id = ?1").bind(id);
+    const project = (await selectStmt.first()) as any;
+    
+    if (project && project.icon_url && project.icon_url.includes("projects/")) {
+      const bucket = getR2Bucket();
+      if (bucket) {
+        const parts = project.icon_url.split("projects/");
+        if (parts.length > 1) {
+          const key = `projects/${parts[1]}`;
+          await bucket.delete(key);
+        }
+      }
+    }
+
+    await db.prepare("DELETE FROM projects WHERE id = ?1").bind(id).run();
+
+    return NextResponse.json({ success: true, deletedId: id });
   } catch (error: any) {
     return NextResponse.json(
       { success: false, error: error.message || "Unknown error occurred" },

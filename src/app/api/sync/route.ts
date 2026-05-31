@@ -21,7 +21,51 @@ export async function GET(req: Request) {
     const id = doNamespace.idFromName("global");
     const stub = doNamespace.get(id);
 
-    return stub.fetch(req);
+    // Secure GET Handshake interceptor: Validate admin cookies/tokens before letting them request admin role
+    const url = new URL(req.url);
+    const role = url.searchParams.get("role") || "visitor";
+
+    if (role === "admin") {
+      const cookieHeader = req.headers.get("cookie") || "";
+      const cookies = Object.fromEntries(
+        cookieHeader.split(";").map(c => {
+          const parts = c.trim().split("=");
+          return [parts[0], parts.slice(1).join("=")];
+        })
+      );
+      const adminSession = cookies["admin_session"];
+      const adminSecret = process.env.ADMIN_SECRET || 'admin-secret-passcode';
+
+      // Compute expected token
+      const encoder = new TextEncoder();
+      const data = encoder.encode(adminSecret);
+      const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      const expectedToken = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+
+      // If valid, append the auth_token parameter so the DO knows it is verified
+      if (adminSession === expectedToken) {
+        url.searchParams.set("auth_token", adminSecret);
+      }
+    }
+
+    // Create a modified Request object with the updated query parameters to pass to the DO stub
+    const requestOptions: RequestInit = {
+      headers: req.headers,
+      method: req.method,
+    };
+    if (req.method !== "GET" && req.method !== "HEAD") {
+      requestOptions.body = req.body;
+    }
+    // @ts-ignore
+    if (req.cf) {
+      // @ts-ignore
+      requestOptions.cf = req.cf;
+    }
+
+    const modifiedReq = new Request(url.toString(), requestOptions);
+
+    return stub.fetch(modifiedReq);
   } catch (err: any) {
     console.error("[WebSocket Sync Upgrade Error]:", err.message);
     return new Response(err.message || "Failed to upgrade WebSocket", { status: 500 });
