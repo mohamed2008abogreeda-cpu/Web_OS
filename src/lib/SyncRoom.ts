@@ -81,8 +81,21 @@ export class SyncRoom {
       }
     }
 
-    // Register WebSocket connection in Durable Object Hibernation context
-    this.state.acceptWebSocket(server);
+    // Build tags for accepted WebSocket to enable O(1) targeted broadcasting
+    const tags: string[] = [];
+    if (roomId) {
+      tags.push(roomId);
+    } else {
+      tags.push("global-sync");
+    }
+    if (role === "admin") {
+      tags.push("admin");
+    } else {
+      tags.push("visitor");
+    }
+
+    // Register WebSocket connection in Durable Object Hibernation context with tags
+    this.state.acceptWebSocket(server, tags);
 
     // Persist per-connection metadata using structured clone attachment
     const sessionInfo = { role, sessionId, roomId };
@@ -142,6 +155,14 @@ export class SyncRoom {
           data.signalType || data.type,
           data.payload
         );
+      }
+
+      // Unified Text Chat Message exchange
+      if (data.type === "CHAT_MESSAGE" && senderInfo.roomId) {
+        this.broadcastToRoom(senderInfo.roomId, senderInfo.role, {
+          type: "CHAT_MESSAGE",
+          payload: data.payload
+        });
       }
     } catch (err) {
       console.error("[DurableObject SyncRoom] webSocketMessage error:", err);
@@ -212,7 +233,7 @@ export class SyncRoom {
     }
   }
 
-  // Helper: Broadcast WebRTC signal payload between opposite role in the same room
+  // Helper: Broadcast WebRTC signal payload between opposite role in the same room using O(1) tags
   private broadcastSignal(roomId: string, role: string, type: string, payload: any) {
     const msg = JSON.stringify({
       type: "signal",
@@ -220,10 +241,26 @@ export class SyncRoom {
       signalType: type,
       payload
     });
-    const activeSockets = this.state.getWebSockets();
-    for (const socket of activeSockets) {
+    const roomSockets = this.state.getWebSockets(roomId);
+    for (const socket of roomSockets) {
       const info = this.sessions.get(socket) || socket.deserializeAttachment();
-      if (info && info.roomId === roomId && info.role !== role) {
+      if (info && info.role !== role) {
+        try {
+          socket.send(msg);
+        } catch {
+          this.sessions.delete(socket);
+        }
+      }
+    }
+  }
+
+  // Helper: Broadcast unified text chat message to the opposite role in the same room using O(1) tags
+  private broadcastToRoom(roomId: string, role: string, payload: any) {
+    const msg = JSON.stringify(payload);
+    const roomSockets = this.state.getWebSockets(roomId);
+    for (const socket of roomSockets) {
+      const info = this.sessions.get(socket) || socket.deserializeAttachment();
+      if (info && info.role !== role) {
         try {
           socket.send(msg);
         } catch {

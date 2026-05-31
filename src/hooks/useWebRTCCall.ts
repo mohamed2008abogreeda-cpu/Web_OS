@@ -21,6 +21,7 @@ export function useWebRTCCall(roomId: string, isAdmin: boolean) {
   const [connected, setConnected] = useState(false);
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
+  const [messages, setMessages] = useState<{ sender: 'admin' | 'visitor'; text: string; timestamp: number }[]>([]);
 
   const localStreamRef = useRef<MediaStream | null>(null);
   const remoteStreamRef = useRef<MediaStream | null>(null);
@@ -192,6 +193,27 @@ export function useWebRTCCall(roomId: string, isAdmin: boolean) {
     [isAdmin, makePeerConnection, drainIce, send, cleanupRTC]
   );
 
+  const sendChatMessage = useCallback((text: string) => {
+    const socket = socketRef.current;
+    if (!text.trim()) return;
+
+    const chatMsg: { sender: 'admin' | 'visitor'; text: string; timestamp: number } = {
+      sender: myRole as 'admin' | 'visitor',
+      text: text.trim(),
+      timestamp: Date.now()
+    };
+
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify({
+        type: 'CHAT_MESSAGE',
+        payload: chatMsg
+      }));
+      
+      // Add own message locally
+      setMessages((prev) => [...prev, chatMsg]);
+    }
+  }, [myRole]);
+
   // ─── Subscribe to signaling on mount ─────────────────────
   useEffect(() => {
     if (!roomId) return;
@@ -229,9 +251,14 @@ export function useWebRTCCall(roomId: string, isAdmin: boolean) {
               type: data.signalType,
               payload: data.payload
             });
+          } else if (data.type === 'CHAT_MESSAGE') {
+            // Receive chat message from peer in the same room
+            if (data.payload && data.payload.sender !== myRole) {
+              setMessages((prev) => [...prev, data.payload]);
+            }
           }
         } catch (err) {
-          console.warn('[WebRTCCall WS] Signal parsing failed:', err);
+          console.warn('[WebRTCCall WS] Message parsing failed:', err);
         }
       };
 
@@ -414,5 +441,7 @@ export function useWebRTCCall(roomId: string, isAdmin: boolean) {
     endCall,
     toggleMic,
     toggleVideo,
+    messages,
+    sendChatMessage
   };
 }

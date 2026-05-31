@@ -60,6 +60,8 @@ function AdminComms() {
     `> [${new Date().toLocaleTimeString()}] INTERVENTION TERMINAL INITIALIZED. READY FOR COMMAND DISPATCH.`
   ]);
   const [isDispatching, setIsDispatching] = useState<boolean>(false);
+  const [chatInput, setChatInput] = useState('');
+  const chatEndRef = useRef<HTMLDivElement | null>(null);
 
   // Initialize WebRTC secure P2P media hook
   const {
@@ -74,7 +76,21 @@ function AdminComms() {
     endCall,
     toggleMic,
     toggleVideo,
+    messages,
+    sendChatMessage
   } = useWebRTCCall(roomId || '', true);
+
+  // Auto-scroll chat viewports to stay centered on incoming/outgoing text payloads
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  const handleSendChat = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!chatInput.trim()) return;
+    sendChatMessage(chatInput);
+    setChatInput('');
+  };
 
   const localVideoRef = useRef<HTMLVideoElement | null>(null);
   const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
@@ -381,41 +397,90 @@ function AdminComms() {
 
         {/* Video Feeds displayed inside left comms panel upon interception */}
         {showVideo ? (
-          <div className="flex-1 grid grid-cols-1 gap-4 mb-6 mt-10">
-            {/* Local Command camera feed */}
-            <div className="bg-black border border-emerald-950/60 rounded p-1.5 flex flex-col relative h-[160px]">
-              <div className="text-[9px] text-emerald-400 font-bold mb-1 flex items-center justify-between">
-                <span>[COMMAND_CENTER_CAM]</span>
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
+          <div className="flex-grow flex flex-col min-h-0 mt-10 overflow-hidden">
+            <div className="grid grid-cols-2 gap-3 mb-4 shrink-0">
+              {/* Local Command camera feed */}
+              <div className="bg-black border border-emerald-950/60 rounded p-1 flex flex-col relative h-[100px]">
+                <div className="text-[8px] text-emerald-400 font-bold mb-0.5 flex items-center justify-between">
+                  <span>[COMMAND_CAM]</span>
+                  <span className="w-1 h-1 rounded-full bg-emerald-500 animate-ping" />
+                </div>
+                <div className="flex-grow bg-zinc-900/40 rounded overflow-hidden relative">
+                  <video
+                    ref={localVideoRef}
+                    autoPlay
+                    playsInline
+                    muted
+                    className="w-full h-full object-cover grayscale sepia contrast-125 brightness-90"
+                  />
+                  <div className="absolute inset-0 pointer-events-none border border-emerald-500/20" />
+                </div>
               </div>
-              <div className="flex-1 bg-zinc-900/40 rounded overflow-hidden relative">
-                <video
-                  ref={localVideoRef}
-                  autoPlay
-                  playsInline
-                  muted
-                  className="w-full h-full object-cover grayscale sepia contrast-125 brightness-90"
-                />
-                <div className="absolute inset-0 pointer-events-none border border-emerald-500/20" />
+
+              {/* Remote visitor camera feed */}
+              <div className="bg-black border border-emerald-950/60 rounded p-1 flex flex-col relative h-[100px]">
+                <div className="text-[8px] text-emerald-400 font-bold mb-0.5 flex items-center justify-between">
+                  <span>[GUEST_CAM]</span>
+                  <span className="w-1 h-1 rounded-full bg-red-500 animate-ping" />
+                </div>
+                <div className="flex-grow bg-zinc-900/40 rounded overflow-hidden relative">
+                  <video
+                    ref={remoteVideoRef}
+                    autoPlay
+                    playsInline
+                    muted
+                    className="w-full h-full object-cover grayscale sepia contrast-125 brightness-90"
+                  />
+                  <div className="absolute inset-0 pointer-events-none border border-emerald-500/20" />
+                </div>
               </div>
             </div>
 
-            {/* Remote visitor camera feed */}
-            <div className="bg-black border border-emerald-950/60 rounded p-1.5 flex flex-col relative h-[160px]">
-              <div className="text-[9px] text-emerald-400 font-bold mb-1 flex items-center justify-between">
-                <span>[KALI_CAM_01] REMOTE_GUEST</span>
-                <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping" />
+            {/* Brutalist Secure Chat UI Panel */}
+            <div className="flex-grow flex flex-col bg-black border border-zinc-900 rounded p-3 mb-4 min-h-[220px] max-h-[300px] overflow-hidden">
+              <div className="text-[9px] text-emerald-400 font-bold mb-2 pb-1 border-b border-emerald-950/60 flex items-center justify-between shrink-0">
+                <span>[COMMAND_COMS_CHAT] UPLINK_ACTIVE</span>
+                <span className="text-zinc-500 text-[8px]">LOGS: {messages.length}</span>
               </div>
-              <div className="flex-1 bg-zinc-900/40 rounded overflow-hidden relative">
-                <video
-                  ref={remoteVideoRef}
-                  autoPlay
-                  playsInline
-                  muted
-                  className="w-full h-full object-cover grayscale sepia contrast-125 brightness-90"
+              
+              {/* Chat history list */}
+              <div className="flex-grow overflow-y-auto space-y-2 pr-1 scrollbar-thin min-h-0 mb-2">
+                {messages.length === 0 ? (
+                  <div className="text-[9px] text-emerald-800 italic p-2">&gt; Secure room established. Encrypted channel quiet.</div>
+                ) : (
+                  messages.map((msg, idx) => (
+                    <div key={idx} className={`text-[9px] p-2 border rounded ${
+                      msg.sender === 'admin' 
+                        ? 'border-amber-900/60 bg-amber-950/5 text-amber-400' 
+                        : 'border-emerald-900/60 bg-emerald-950/5 text-emerald-400'
+                    }`}>
+                      <div className="flex justify-between items-center text-[6px] text-zinc-500 font-bold mb-1">
+                        <span>[{msg.sender.toUpperCase()}]</span>
+                        <span>{new Date(msg.timestamp).toLocaleTimeString()}</span>
+                      </div>
+                      <div className="break-all whitespace-pre-wrap">{msg.text}</div>
+                    </div>
+                  ))
+                )}
+                <div ref={chatEndRef} />
+              </div>
+
+              {/* Chat input form */}
+              <form onSubmit={handleSendChat} className="mt-auto flex gap-2 pt-2 border-t border-emerald-950/40 shrink-0">
+                <input
+                  type="text"
+                  value={chatInput}
+                  onChange={(e) => setChatInput(e.target.value)}
+                  placeholder="Enter payload message..."
+                  className="flex-grow bg-black text-emerald-400 border border-emerald-900/60 px-3 py-1.5 rounded text-[9px] focus:outline-none focus:border-emerald-500 font-mono"
                 />
-                <div className="absolute inset-0 pointer-events-none border border-emerald-500/20" />
-              </div>
+                <button
+                  type="submit"
+                  className="bg-emerald-950/60 hover:bg-emerald-900/60 text-emerald-400 border border-emerald-900 px-3 py-1.5 rounded text-[9px] font-bold cursor-pointer transition-colors"
+                >
+                  [ TRANSMIT ]
+                </button>
+              </form>
             </div>
           </div>
         ) : (
