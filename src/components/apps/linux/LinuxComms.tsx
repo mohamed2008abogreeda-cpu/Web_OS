@@ -16,6 +16,9 @@ export default function LinuxComms() {
   const [micMuted, setMicMuted] = useState(false);
   const [videoMuted, setVideoMuted] = useState(true);
   const [turnstileToken, setTurnstileToken] = useState<string>('');
+
+  const turnstileContainerRef = useRef<HTMLDivElement | null>(null);
+  const widgetIdRef = useRef<string | null>(null);
   
   const {
     status,
@@ -78,12 +81,15 @@ export default function LinuxComms() {
     return () => clearInterval(interval);
   }, []);
 
-  // Load and mount Cloudflare Turnstile CAPTCHA explicitly
+  // Load and mount Cloudflare Turnstile CAPTCHA explicitly with clean React lifecycle management
   useEffect(() => {
     if (phase !== 'idle') return;
 
-    // 1. Inject script if absent
-    if (!document.getElementById('cloudflare-turnstile-script')) {
+    let isMounted = true;
+    let checkInterval: NodeJS.Timeout;
+
+    // 1. Check and inject the Turnstile script dynamically if not present
+    if (typeof window !== 'undefined' && !document.getElementById('cloudflare-turnstile-script')) {
       const script = document.createElement('script');
       script.id = 'cloudflare-turnstile-script';
       script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
@@ -92,23 +98,36 @@ export default function LinuxComms() {
       document.body.appendChild(script);
     }
 
-    // 2. Render Widget explicitly once Turnstile is present
+    // 2. Render Widget explicitly once Turnstile is present using the useRef container
     const renderWidget = () => {
       const ts = (window as any).turnstile;
-      const container = document.getElementById('turnstile-widget');
-      if (ts && container && container.innerHTML === '') {
-        ts.render('#turnstile-widget', {
-          sitekey: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || '1x0000000000000000000000000000000AA',
-          callback: (token: string) => {
-            setTurnstileToken(token);
-          },
-          'expired-callback': () => {
-            setTurnstileToken('');
-          },
-          'error-callback': () => {
-            setTurnstileToken('');
-          }
-        });
+      if (ts && turnstileContainerRef.current && isMounted) {
+        // If a widget was already rendered, clean it up first to avoid duplicates
+        if (widgetIdRef.current) {
+          try {
+            ts.remove(widgetIdRef.current);
+          } catch (e) {}
+          widgetIdRef.current = null;
+        }
+
+        try {
+          const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || '1x0000000000000000000000000000000AA';
+          const widgetId = ts.render(turnstileContainerRef.current, {
+            sitekey: siteKey,
+            callback: (token: string) => {
+              if (isMounted) setTurnstileToken(token);
+            },
+            'expired-callback': () => {
+              if (isMounted) setTurnstileToken('');
+            },
+            'error-callback': () => {
+              if (isMounted) setTurnstileToken('');
+            }
+          });
+          widgetIdRef.current = widgetId;
+        } catch (err) {
+          console.warn('[Turnstile Mount Error]:', err);
+        }
       }
     };
 
@@ -116,15 +135,26 @@ export default function LinuxComms() {
       if ((window as any).turnstile) {
         renderWidget();
       } else {
-        const interval = setInterval(() => {
+        checkInterval = setInterval(() => {
           if ((window as any).turnstile) {
             renderWidget();
-            clearInterval(interval);
+            clearInterval(checkInterval);
           }
         }, 100);
-        return () => clearInterval(interval);
       }
     }
+
+    // 3. Return clean unmount handler
+    return () => {
+      isMounted = false;
+      if (checkInterval) clearInterval(checkInterval);
+      if (widgetIdRef.current && (window as any).turnstile) {
+        try {
+          (window as any).turnstile.remove(widgetIdRef.current);
+        } catch (e) {}
+        widgetIdRef.current = null;
+      }
+    };
   }, [phase]);
 
   const handleCall = async () => {
@@ -340,7 +370,7 @@ export default function LinuxComms() {
                   <Shield className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
                   <span>SOLVE SECURITY CHALLENGE TO PING ADMIN</span>
                 </div>
-                <div id="turnstile-widget" className="min-h-[65px] flex items-center justify-center"></div>
+                <div ref={turnstileContainerRef} className="min-h-[65px] flex items-center justify-center"></div>
               </div>
             )}
 
