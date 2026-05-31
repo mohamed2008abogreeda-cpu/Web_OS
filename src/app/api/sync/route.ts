@@ -34,17 +34,11 @@ export async function GET(req: Request) {
         })
       );
       const adminSession = cookies["admin_session"];
+      const expectedToken = process.env.ADMIN_HASH || '0e2df64939a0f3ffff872b1e534018c73ec22765f27ae16e05398717662674d7';
       const adminSecret = process.env.ADMIN_SECRET || 'admin-secret-passcode';
 
-      // Compute expected token
-      const encoder = new TextEncoder();
-      const data = encoder.encode(adminSecret);
-      const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-      const hashArray = Array.from(new Uint8Array(hashBuffer));
-      const expectedToken = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-
       // If valid, append the auth_token parameter so the DO knows it is verified
-      if (adminSession === expectedToken) {
+      if (adminSession && timingSafeEqual(adminSession, expectedToken)) {
         url.searchParams.set("auth_token", adminSecret);
       }
     }
@@ -114,4 +108,19 @@ export async function POST(req: Request) {
     console.error("[HTTP Sync Fallback Error]:", message);
     return NextResponse.json({ error: message }, { status: 500 });
   }
+}
+
+/**
+ * Timing-safe string comparison to prevent timing attacks.
+ * Fully Edge and Cloudflare Workers compatible (O(N) runtime based on string length).
+ */
+function timingSafeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) {
+    return false;
+  }
+  let result = 0;
+  for (let i = 0; i < a.length; i++) {
+    result |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return result === 0;
 }

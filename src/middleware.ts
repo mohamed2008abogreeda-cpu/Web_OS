@@ -57,16 +57,12 @@ export async function middleware(request: NextRequest) {
   // 2. Step B: Admin Authentication Guard
   if (pathname.startsWith('/admin')) {
     const adminSession = request.cookies.get('admin_session')?.value;
-    const adminSecret = process.env.ADMIN_SECRET || 'admin-secret-passcode';
+    const expectedToken = process.env.ADMIN_HASH || '0e2df64939a0f3ffff872b1e534018c73ec22765f27ae16e05398717662674d7';
 
-    // Compute expected session token dynamically via standard Web Crypto
-    const encoder = new TextEncoder();
-    const data = encoder.encode(adminSecret);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    const expectedToken = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    // Timing-Attack Resistant Comparison
+    const isSessionValid = adminSession && timingSafeEqual(adminSession, expectedToken);
 
-    if (!adminSession || adminSession !== expectedToken) {
+    if (!isSessionValid) {
       // Redirect unauthenticated user to the /login page
       const url = request.nextUrl.clone();
       url.pathname = '/login';
@@ -83,3 +79,18 @@ export const config = {
     '/((?!_next/static|_next/image|favicon.ico).*)',
   ],
 };
+
+/**
+ * Timing-safe string comparison to prevent timing attacks.
+ * Fully Edge and Cloudflare Workers compatible (O(N) runtime based on string length).
+ */
+function timingSafeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) {
+    return false;
+  }
+  let result = 0;
+  for (let i = 0; i < a.length; i++) {
+    result |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return result === 0;
+}
