@@ -10,7 +10,10 @@
     "preview:worker": "npm run build:worker && npm run dev:worker",
     "deploy": "npm run build:worker && npx wrangler deploy",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "wrangler d1 migrations apply portfolio-db --local",
+    "db:migrate:production": "wrangler d1 migrations apply portfolio-db --remote"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",
