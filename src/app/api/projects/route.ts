@@ -1,8 +1,10 @@
 // ============================================================
-// API: /api/projects — D1 SQL & R2 Storage Admin Integration
+// API: /api/projects — Drizzle ORM & R2 Storage Admin Integration
 // ============================================================
 import { NextRequest, NextResponse } from "next/server";
-import { getD1Database, getR2Bucket } from "@/lib/db";
+import { getD1Database, getR2Bucket, getDrizzle } from "@/lib/db";
+import { projects } from "@/db/schema";
+import { eq, or, desc, sql } from "drizzle-orm";
 import { PROJECTS } from "@/lib/mockData";
 
 /**
@@ -39,11 +41,10 @@ async function validateAdmin(request: NextRequest): Promise<boolean> {
 export async function GET(request: NextRequest) {
   try {
     const userId = request.nextUrl.searchParams.get("userId");
-    const db = getD1Database();
+    const drizzleDb = getDrizzle();
 
-    if (db) {
-      let query = "SELECT * FROM projects";
-      let stmt;
+    if (drizzleDb) {
+      let results;
 
       if (userId) {
         let targetId = userId;
@@ -52,20 +53,31 @@ export async function GET(request: NextRequest) {
         if (userId === "Team") targetId = "user-team";
 
         if (targetId === "user-team") {
-          stmt = db.prepare(query + " ORDER BY created_at DESC");
+          results = await drizzleDb
+            .select()
+            .from(projects)
+            .orderBy(desc(projects.createdAt));
         } else {
-          stmt = db.prepare(
-            query + " WHERE user_id = ?1 OR user_id = 'user-team' ORDER BY created_at DESC"
-          ).bind(targetId);
+          results = await drizzleDb
+            .select()
+            .from(projects)
+            .where(
+              or(
+                eq(projects.userId, targetId),
+                eq(projects.userId, 'user-team')
+              )
+            )
+            .orderBy(desc(projects.createdAt));
         }
       } else {
-        stmt = db.prepare(query + " ORDER BY created_at DESC");
+        results = await drizzleDb
+          .select()
+          .from(projects)
+          .orderBy(desc(projects.createdAt));
       }
 
-      const { results } = await stmt.all();
-
       if (results && results.length > 0) {
-        const formattedProjects = results.map((row: any) => {
+        const formattedProjects = results.map((row) => {
           let parsedTags: string[] = [];
           try {
             parsedTags = typeof row.tags === "string" ? JSON.parse(row.tags) : (row.tags || []);
@@ -75,13 +87,13 @@ export async function GET(request: NextRequest) {
 
           return {
             id: row.id,
-            userId: row.user_id,
+            userId: row.userId,
             title: row.title,
             description: row.description,
-            iconUrl: row.icon_url,
-            hasIframe: Boolean(row.has_iframe),
-            projectUrl: row.project_url,
-            liveApiEndpoint: row.live_api_endpoint,
+            iconUrl: row.iconUrl,
+            hasIframe: Boolean(row.hasIframe),
+            projectUrl: row.projectUrl,
+            liveApiEndpoint: row.liveApiEndpoint,
             tags: parsedTags,
           };
         });
@@ -136,12 +148,17 @@ export async function POST(request: NextRequest) {
       throw new Error("D1 Database binding is required for writing database records.");
     }
 
+    const drizzleDb = getDrizzle(db);
+    if (!drizzleDb) {
+      throw new Error("Failed to initialize Drizzle ORM database instance.");
+    }
+
     const formData = await request.formData();
     const id = formData.get("id") as string || `proj-${Math.random().toString(36).substring(2, 9)}`;
     const userId = formData.get("userId") as string;
     const title = formData.get("title") as string;
     const description = formData.get("description") as string || "";
-    const hasIframe = formData.get("hasIframe") === "true" || formData.get("hasIframe") === "1" ? 1 : 0;
+    const hasIframe = formData.get("hasIframe") === "true" || formData.get("hasIframe") === "1";
     const projectUrl = formData.get("projectUrl") as string || "";
     const liveApiEndpoint = formData.get("liveApiEndpoint") as string || null;
     const tags = formData.get("tags") as string || "[]";
@@ -170,14 +187,20 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 2. Insert SQL Record to D1 Database
-    await db
-      .prepare(
-        `INSERT INTO projects (id, user_id, title, description, icon_url, has_iframe, project_url, live_api_endpoint, tags)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)`
-      )
-      .bind(id, userId, title, description, iconUrl, hasIframe, projectUrl, liveApiEndpoint, tags)
-      .run();
+    // 2. Insert SQL Record to D1 Database using Drizzle
+    await drizzleDb
+      .insert(projects)
+      .values({
+        id,
+        userId,
+        title,
+        description,
+        iconUrl,
+        hasIframe,
+        projectUrl,
+        liveApiEndpoint,
+        tags,
+      });
 
     return NextResponse.json({ success: true, projectId: id, iconUrl });
   } catch (error: any) {
@@ -206,6 +229,11 @@ export async function PUT(request: NextRequest) {
       throw new Error("D1 Database binding is required for writing database records.");
     }
 
+    const drizzleDb = getDrizzle(db);
+    if (!drizzleDb) {
+      throw new Error("Failed to initialize Drizzle ORM database instance.");
+    }
+
     const formData = await request.formData();
     const id = formData.get("id") as string;
     
@@ -216,7 +244,7 @@ export async function PUT(request: NextRequest) {
     const userId = formData.get("userId") as string;
     const title = formData.get("title") as string;
     const description = formData.get("description") as string || "";
-    const hasIframe = formData.get("hasIframe") === "true" || formData.get("hasIframe") === "1" ? 1 : 0;
+    const hasIframe = formData.get("hasIframe") === "true" || formData.get("hasIframe") === "1";
     const projectUrl = formData.get("projectUrl") as string || "";
     const liveApiEndpoint = formData.get("liveApiEndpoint") as string || null;
     const tags = formData.get("tags") as string || "[]";
@@ -226,10 +254,12 @@ export async function PUT(request: NextRequest) {
     // Retrieve project icon url first to clean up R2 file if applicable to prevent orphaned objects
     let oldIconUrl = "";
     try {
-      const selectStmt = db.prepare("SELECT icon_url FROM projects WHERE id = ?1").bind(id);
-      const oldProject = (await selectStmt.first()) as any;
-      if (oldProject && oldProject.icon_url) {
-        oldIconUrl = oldProject.icon_url;
+      const oldProjects = await drizzleDb
+        .select({ iconUrl: projects.iconUrl })
+        .from(projects)
+        .where(eq(projects.id, id));
+      if (oldProjects && oldProjects.length > 0 && oldProjects[0].iconUrl) {
+        oldIconUrl = oldProjects[0].iconUrl;
       }
     } catch (err) {
       console.warn("[PUT Projects Route] Failed to fetch old iconUrl for cleanup:", err);
@@ -269,15 +299,21 @@ export async function PUT(request: NextRequest) {
       }
     }
 
-    // 2. Update SQL Record in D1
-    await db
-      .prepare(
-        `UPDATE projects 
-         SET user_id = ?2, title = ?3, description = ?4, icon_url = ?5, has_iframe = ?6, project_url = ?7, live_api_endpoint = ?8, tags = ?9, updated_at = CURRENT_TIMESTAMP
-         WHERE id = ?1`
-      )
-      .bind(id, userId, title, description, iconUrl, hasIframe, projectUrl, liveApiEndpoint, tags)
-      .run();
+    // 2. Update SQL Record in D1 using Drizzle
+    await drizzleDb
+      .update(projects)
+      .set({
+        userId,
+        title,
+        description,
+        iconUrl,
+        hasIframe,
+        projectUrl,
+        liveApiEndpoint,
+        tags,
+        updatedAt: sql`CURRENT_TIMESTAMP`,
+      })
+      .where(eq(projects.id, id));
 
     return NextResponse.json({ success: true, projectId: id, iconUrl });
   } catch (error: any) {
@@ -293,7 +329,7 @@ export async function PUT(request: NextRequest) {
  */
 export async function DELETE(request: NextRequest) {
   try {
-    // Zero-Trust Enforce Admin Authentication
+    // Zero-Zero Enforce Admin Authentication
     const isAdminValid = await validateAdmin(request);
     if (!isAdminValid) {
       return new Response("Unauthorized", { status: 401 });
@@ -304,27 +340,40 @@ export async function DELETE(request: NextRequest) {
       throw new Error("D1 Database binding is required for deleting database records.");
     }
 
+    const drizzleDb = getDrizzle(db);
+    if (!drizzleDb) {
+      throw new Error("Failed to initialize Drizzle ORM database instance.");
+    }
+
     const id = request.nextUrl.searchParams.get("id");
     if (!id) {
       throw new Error("Missing project ID parameter for deleting records.");
     }
 
     // Retrieve project icon url first to clean up R2 file if applicable
-    const selectStmt = db.prepare("SELECT icon_url FROM projects WHERE id = ?1").bind(id);
-    const project = (await selectStmt.first()) as any;
+    const oldProjects = await drizzleDb
+      .select({ iconUrl: projects.iconUrl })
+      .from(projects)
+      .where(eq(projects.id, id));
     
-    if (project && project.icon_url && project.icon_url.includes("projects/")) {
-      const bucket = getR2Bucket();
-      if (bucket) {
-        const parts = project.icon_url.split("projects/");
-        if (parts.length > 1) {
-          const key = `projects/${parts[1]}`;
-          await bucket.delete(key);
+    if (oldProjects && oldProjects.length > 0) {
+      const iconUrl = oldProjects[0].iconUrl;
+      if (iconUrl && iconUrl.includes("projects/")) {
+        const bucket = getR2Bucket();
+        if (bucket) {
+          const parts = iconUrl.split("projects/");
+          if (parts.length > 1) {
+            const key = `projects/${parts[1]}`;
+            await bucket.delete(key);
+          }
         }
       }
     }
 
-    await db.prepare("DELETE FROM projects WHERE id = ?1").bind(id).run();
+    // Delete project record using Drizzle
+    await drizzleDb
+      .delete(projects)
+      .where(eq(projects.id, id));
 
     return NextResponse.json({ success: true, deletedId: id });
   } catch (error: any) {
@@ -334,3 +383,4 @@ export async function DELETE(request: NextRequest) {
     );
   }
 }
+

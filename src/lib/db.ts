@@ -1,4 +1,6 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
+import { drizzle } from "drizzle-orm/d1";
+import * as schema from "@/db/schema";
 
 /**
  * Safely resolves the D1 Database binding inside the Edge/OpenNext context.
@@ -23,6 +25,15 @@ export function getD1Database() {
 }
 
 /**
+ * Instantiates the type-safe Drizzle ORM instance over the D1 client connection.
+ */
+export function getDrizzle(d1Database?: any) {
+  const db = d1Database || getD1Database();
+  if (!db) return null;
+  return drizzle(db, { schema });
+}
+
+/**
  * Safely resolves the R2 Bucket binding inside the Edge/OpenNext context.
  */
 export function getR2Bucket() {
@@ -41,3 +52,4 @@ export function getR2Bucket() {
 
   return null;
 }
+

@@ -6,6 +6,7 @@ import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useOSStore } from '@/store/useOSStore';
 import { useSpectatorSync } from '@/hooks/useSpectatorSync';
+import { useHydration } from '@/hooks/useHydration';
 import BootScreen from '@/components/BootScreen';
 import LoginScreen from '@/components/LoginScreen';
 import Desktop from '@/components/Desktop';
@@ -72,6 +73,7 @@ function BSODScreen() {
 }
 
 export default function Home() {
+  const hydrated = useHydration();
   const bootPhase = useOSStore((s) => s.bootPhase);
   const setMobile = useOSStore((s) => s.setMobile);
   const isBsod = useOSStore((s) => s.isBsod);
@@ -87,6 +89,15 @@ export default function Home() {
     window.addEventListener('resize', check);
     return () => window.removeEventListener('resize', check);
   }, [setMobile]);
+
+  // Pre-hydration SSR fallback to match original HTML
+  if (!hydrated) {
+    return (
+      <main className="w-full h-screen overflow-hidden bg-black select-none">
+        <BootScreen />
+      </main>
+    );
+  }
 
   return (
     <main className="w-full h-screen overflow-hidden bg-black select-none">
@@ -104,3 +115,4 @@ export default function Home() {
     </main>
   );
 }
+

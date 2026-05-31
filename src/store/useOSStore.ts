@@ -1,12 +1,25 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import type { OSState } from '@/types';
 import { createWindowSlice } from './createWindowSlice';
 import { createSystemSlice } from './createSystemSlice';
 
-export const useOSStore = create<OSState>((set, get, store) => ({
-  ...createWindowSlice(set, get, store),
-  ...createSystemSlice(set, get, store),
-}));
+export const useOSStore = create<OSState>()(
+  persist(
+    (set, get, store) => ({
+      ...createWindowSlice(set, get, store),
+      ...createSystemSlice(set, get, store),
+    }),
+    {
+      name: 'webos-system-state',
+      partialize: (state) => ({
+        currentUser: state.currentUser,
+        bootPhase: state.bootPhase,
+      }),
+    }
+  )
+);
+
 
 // ── State-Driven PostHog Telemetry Subscriber ──────────────────────
 if (typeof window !== 'undefined') {
