@@ -1,6 +1,7 @@
 'use client';
 import { motion } from 'framer-motion';
 import { useOSStore } from '@/store/useOSStore';
+import { useShallow } from 'zustand/react/shallow';
 import { APP_ICONS } from '@/lib/icons';
 import type { AppDefinition } from '@/types';
 import LinuxWindow from './LinuxWindow';
@@ -15,7 +16,8 @@ export const LINUX_APPS: AppDefinition[] = [
 ];
 
 export default function LinuxDesktop() {
-  const { windows, openWindow } = useOSStore();
+  const openWindow = useOSStore((state) => state.openWindow);
+  const windows = useOSStore(useShallow((state) => state.windows));
 
   return (
     <motion.div 

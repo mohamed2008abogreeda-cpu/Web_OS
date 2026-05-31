@@ -12,16 +12,14 @@ interface WindowWrapperProps {
 }
 
 export default function WindowWrapper({ window: win, children }: WindowWrapperProps) {
-  const {
-    activeWindowId,
-    isMobile,
-    focusWindow,
-    closeWindow,
-    minimizeWindow,
-    maximizeWindow,
-    updateWindowPosition,
-    updateWindowSize,
-  } = useOSStore();
+  const activeWindowId = useOSStore((state) => state.activeWindowId);
+  const isMobile = useOSStore((state) => state.isMobile);
+  const focusWindow = useOSStore((state) => state.focusWindow);
+  const closeWindow = useOSStore((state) => state.closeWindow);
+  const minimizeWindow = useOSStore((state) => state.minimizeWindow);
+  const maximizeWindow = useOSStore((state) => state.maximizeWindow);
+  const updateWindowPosition = useOSStore((state) => state.updateWindowPosition);
+  const updateWindowSize = useOSStore((state) => state.updateWindowSize);
 
   const isActive = activeWindowId === win.id;
   const rndRef = useRef<Rnd>(null);

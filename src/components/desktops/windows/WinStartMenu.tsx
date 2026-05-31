@@ -7,7 +7,9 @@ import { APP_ICONS } from '@/lib/icons';
 import { Search, ChevronRight, Power, UserCircle2 } from 'lucide-react';
 
 export default function WinStartMenu() {
-  const { openWindow, toggleStartMenu, logoutUser } = useOSStore();
+  const openWindow = useOSStore((s) => s.openWindow);
+  const toggleStartMenu = useOSStore((s) => s.toggleStartMenu);
+  const logoutUser = useOSStore((s) => s.logoutUser);
   const menuRef = useRef<HTMLDivElement>(null);
 
   // Close menu when clicking outside

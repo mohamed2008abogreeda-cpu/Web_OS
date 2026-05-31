@@ -1,5 +1,6 @@
 'use client';
 import { useOSStore } from '@/store/useOSStore';
+import { useShallow } from 'zustand/react/shallow';
 import { motion } from 'framer-motion';
 import { SYSTEM_APPS } from '@/lib/mockData';
 import { APP_ICONS } from '@/lib/icons';
@@ -7,7 +8,8 @@ import WinWindow from './WinWindow';
 import WinTaskbar from './WinTaskbar';
 
 export default function WinDesktop() {
-  const { windows, openWindow } = useOSStore();
+  const openWindow = useOSStore((state) => state.openWindow);
+  const windows = useOSStore(useShallow((state) => state.windows));
 
   return (
     <motion.div 

@@ -1,6 +1,7 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import { useOSStore } from '@/store/useOSStore';
+import { useShallow } from 'zustand/react/shallow';
 import { SYSTEM_APPS } from '@/lib/mockData';
 import { APP_ICONS } from '@/lib/icons';
 import { LayoutGrid, ChevronUp, Wifi, Volume2 } from 'lucide-react';
@@ -8,7 +9,11 @@ import WinStartMenu from './WinStartMenu';
 import { AnimatePresence } from 'framer-motion';
 
 export default function WinTaskbar() {
-  const { windows, openWindow, activeWindowId, isStartMenuOpen, toggleStartMenu } = useOSStore();
+  const openWindow = useOSStore((state) => state.openWindow);
+  const activeWindowId = useOSStore((state) => state.activeWindowId);
+  const isStartMenuOpen = useOSStore((state) => state.isStartMenuOpen);
+  const toggleStartMenu = useOSStore((state) => state.toggleStartMenu);
+  const windows = useOSStore(useShallow((state) => state.windows));
   const [time, setTime] = useState<Date | null>(null);
 
   useEffect(() => {

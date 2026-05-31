@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useOSStore } from '@/store/useOSStore';
+import { useShallow } from 'zustand/react/shallow';
 import { SYSTEM_APPS } from '@/lib/mockData';
 import { LINUX_APPS } from '@/components/desktops/linux/LinuxDesktop';
 
@@ -26,6 +27,12 @@ export function useSpectatorSync() {
   // Granular, strict react subscriptions to prevent parent re-renders on other state changes
   const isSpectating = useOSStore((s) => s.isSpectating);
   const sessionId = useOSStore((s) => s.sessionId);
+  const windows = useOSStore(useShallow((s) => s.windows));
+
+  const windowsRef = useRef(windows);
+  useEffect(() => {
+    windowsRef.current = windows;
+  }, [windows]);
 
   // Sync state to ref to avoid stale closure in window event listener
   useEffect(() => {
@@ -126,7 +133,7 @@ export function useSpectatorSync() {
       // Strict 1000ms Throttling gate
       if (now - lastUpdate.current < 1000) return;
 
-      const activeWindows = useOSStore.getState().windows;
+      const activeWindows = windowsRef.current;
       const windowsHash = JSON.stringify(activeWindows.map(w => ({ id: w.id, isOpen: w.isOpen })));
 
       // Calculate Euclidean distance: hypotenuse = Math.hypot(dx, dy)

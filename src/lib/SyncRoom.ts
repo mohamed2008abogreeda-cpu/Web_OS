@@ -5,6 +5,7 @@
  */
 export class SyncRoom {
   private sessions = new Map<any, { role: string; sessionId?: string; roomId?: string }>();
+  private rateLimiters = new WeakMap<any, { lastReset: number; messageCount: number }>();
 
   constructor(private state: any, private env: any) {
     // Restore active sessions map on wake up/re-instantiation from the persistent DO state
@@ -121,38 +122,63 @@ export class SyncRoom {
       const senderInfo = ws.deserializeAttachment() || this.sessions.get(ws);
       if (!senderInfo) return;
 
-      // 2. Token Bucket / Window-based Rate Limiter (5 messages per 1000ms)
+      // 2. WeakMap-based Rate Limiter (5 messages per 1000ms) with hibernation safety
       const now = Date.now();
-      const lastReset = senderInfo.lastReset || 0;
-      let messageCount = senderInfo.messageCount || 0;
+      let limiter = this.rateLimiters.get(ws);
+      if (!limiter) {
+        limiter = {
+          lastReset: senderInfo.lastReset || now,
+          messageCount: senderInfo.messageCount || 0
+        };
+        this.rateLimiters.set(ws, limiter);
+      }
 
-      if (now - lastReset > 1000) {
-        senderInfo.lastReset = now;
-        senderInfo.messageCount = 1;
+      if (now - limiter.lastReset >= 1000) {
+        limiter.lastReset = now;
+        limiter.messageCount = 1;
       } else {
-        senderInfo.messageCount = messageCount + 1;
-        if (senderInfo.messageCount > 5) {
-          console.warn(`[SyncRoom Rate Limiter] Session ${senderInfo.sessionId || 'N/A'} exceeded limit: ${senderInfo.messageCount} msg/sec. Dropping packet.`);
-          // Persist updated counters
+        limiter.messageCount += 1;
+        if (limiter.messageCount > 5) {
+          console.warn(`[SyncRoom Rate Limiter] Session ${senderInfo.sessionId || 'N/A'} exceeded limit: ${limiter.messageCount} msg/sec. Dropping packet.`);
+          // Sync rate limiting state to persistent DO hibernation attachment
+          senderInfo.lastReset = limiter.lastReset;
+          senderInfo.messageCount = limiter.messageCount;
           ws.serializeAttachment(senderInfo);
           this.sessions.set(ws, senderInfo);
           return; // Instantly silently drop the flood packet to protect V8 CPU
         }
       }
 
-      // Persist updated counters back to the hibernation context
+      // Sync rate limiting state to persistent DO hibernation attachment
+      senderInfo.lastReset = limiter.lastReset;
+      senderInfo.messageCount = limiter.messageCount;
       ws.serializeAttachment(senderInfo);
       this.sessions.set(ws, senderInfo);
 
-      const data = JSON.parse(message);
+      // Parse JSON inside try-catch to handle client malformation gracefully
+      let data: any;
+      try {
+        data = JSON.parse(message);
+      } catch (err) {
+        console.error("[SyncRoom] Failed to parse message JSON:", err);
+        return; // Silently drop malformed JSON packets
+      }
+
+      if (!data || typeof data !== "object") return;
 
       // 3. Zero-Trust Command Authentication Guard
-      if (data.type === "intervene" || data.type === "SPECTATE_COMMAND") {
-        if (senderInfo.role !== "admin") {
-          console.error(`[SyncRoom Security Alert] Role spoofing attempt detected from session ${senderInfo.sessionId || 'N/A'} (role: ${senderInfo.role}). Severing connection.`);
-          ws.close(1008, "Policy Violation: Unauthorized Administrative Command");
-          return;
-        }
+      // Prevent any role spoofing by inspecting message type against trusted attachment role
+      const typeLower = (data.type || "").toLowerCase();
+      const isAdministrative = 
+        typeLower.includes("intervene") || 
+        typeLower.includes("spectate") || 
+        typeLower.includes("bsod") || 
+        typeLower.includes("admin");
+
+      if (isAdministrative && senderInfo.role !== "admin") {
+        console.error(`[SyncRoom Security Alert] Unauthorized administrative payload spoofing attempt detected from session ${senderInfo.sessionId || 'N/A'} (role: ${senderInfo.role}). Severing connection.`);
+        ws.close(1008, "Policy Violation: Unauthorized Administrative Command");
+        return;
       }
 
       // Visitor sending state/coordinates updates
