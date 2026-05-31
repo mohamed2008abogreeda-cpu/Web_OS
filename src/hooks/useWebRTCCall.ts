@@ -1,20 +1,12 @@
 /**
- * useWebRTCCall — Peer-to-peer voice & video call hook (Native Durable Object WebSocket Signaling)
+ * useWebRTCCall — Cloudflare Calls SFU voice & video call hook (Native Durable Object WebSocket Signaling)
  *
- * Signaling: Durable Object WebSockets for real-time WebRTC SDP exchange
- * Media:     Native WebRTC with STUN (Google + Twilio)
+ * Media:     Cloudflare Calls SFU (Anycast Routing)
+ * Signaling: Durable Object WebSockets for session metadata exchange
  */
 import { useEffect, useRef, useState, useCallback } from 'react';
 
-// ─── Types ───────────────────────────────────────────────────
 type CallStatus = 'idle' | 'connecting' | 'ready' | 'ringing' | 'active' | 'ended' | 'error';
-
-// ─── ICE Servers ─────────────────────────────────────────────
-const ICE_SERVERS: RTCIceServer[] = [
-  { urls: 'stun:stun.l.google.com:19302' },
-  { urls: 'stun:stun1.l.google.com:19302' },
-  { urls: 'global.stun.twilio.com:3478' },
-];
 
 export function useWebRTCCall(roomId: string, isAdmin: boolean) {
   const [callStatus, setCallStatus] = useState<CallStatus>('idle');
@@ -27,33 +19,30 @@ export function useWebRTCCall(roomId: string, isAdmin: boolean) {
   const remoteStreamRef = useRef<MediaStream | null>(null);
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const mountedRef = useRef(true);
-  const iceQueue = useRef<RTCIceCandidateInit[]>([]);
-  const remoteDescReady = useRef(false);
   const socketRef = useRef<WebSocket | null>(null);
 
+  const sessionIdRef = useRef<string | null>(null);
   const myRole = isAdmin ? 'admin' : 'visitor';
 
-  // ─── Send signal to peer ─────────────────────────────────
+  // Keep track of the remote peer's details once received via signaling
+  const remoteSessionIdRef = useRef<string | null>(null);
+  const remoteAudioTrackNameRef = useRef<string | null>(null);
+  const remoteVideoTrackNameRef = useRef<string | null>(null);
+
+  // Helper: send DO WebSocket signals to peers in the same room
   const send = useCallback((type: string, payload?: unknown) => {
     const socket = socketRef.current;
     if (socket && socket.readyState === WebSocket.OPEN) {
-      // Send signal instantly over active WebSocket with zero latency
       socket.send(JSON.stringify({
         type: 'signal',
+        role: myRole,
         signalType: type,
         payload
       }));
-    } else {
-      // Fallback: send signaling payload to REST endpoint if WebSocket is offline
-      fetch('/api/call/signal', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ roomId, role: myRole, type, payload }),
-      }).catch((err) => console.warn('[WebRTC Fallback] Signal send failed:', err));
     }
-  }, [roomId, myRole]);
+  }, [myRole]);
 
-  // ─── Cleanup WebRTC ──────────────────────────────────────
+  // Cleanup WebRTC and Media Tracks
   const cleanupRTC = useCallback(() => {
     pcRef.current?.close();
     pcRef.current = null;
@@ -62,124 +51,103 @@ export function useWebRTCCall(roomId: string, isAdmin: boolean) {
     setLocalStream(null);
     remoteStreamRef.current = null;
     setRemoteStream(null);
-    iceQueue.current = [];
-    remoteDescReady.current = false;
+    sessionIdRef.current = null;
+    remoteSessionIdRef.current = null;
+    remoteAudioTrackNameRef.current = null;
+    remoteVideoTrackNameRef.current = null;
   }, []);
 
-  // ─── Create PeerConnection ───────────────────────────────
-  const makePeerConnection = useCallback(() => {
-    if (pcRef.current) pcRef.current.close();
-
-    const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
-
-    pc.onicecandidate = (e) => {
-      if (e.candidate) {
-        send('candidate', e.candidate.toJSON());
-      }
-    };
-
-    pc.ontrack = (e) => {
-      if (!mountedRef.current) return;
-      console.log('[WebRTC] Remote track received:', e.track.kind, e.track.id);
-
-      if (!remoteStreamRef.current) {
-        remoteStreamRef.current = new MediaStream();
-      }
-
-      const exists = remoteStreamRef.current.getTracks().find((t) => t.id === e.track.id);
-      if (!exists) {
-        remoteStreamRef.current.addTrack(e.track);
-      }
-
-      setRemoteStream(new MediaStream(remoteStreamRef.current.getTracks()));
-      setConnected(true);
-      setCallStatus('active');
-    };
-
-    pc.oniceconnectionstatechange = () => {
-      if (!mountedRef.current) return;
-      const s = pc.iceConnectionState;
-      if (s === 'disconnected' || s === 'failed' || s === 'closed') {
-        setConnected(false);
-        setCallStatus('ended');
-      }
-    };
-
-    pcRef.current = pc;
-    return pc;
-  }, [send]);
-
-  // ─── Drain queued ICE candidates ─────────────────────────
-  const drainIce = useCallback(async () => {
-    const pc = pcRef.current;
-    if (!pc || !pc.remoteDescription) return;
-    const queued = [...iceQueue.current];
-    iceQueue.current = [];
-    for (const c of queued) {
-      try {
-        await pc.addIceCandidate(new RTCIceCandidate(c));
-      } catch (e) {
-        console.warn('[WebRTC] Failed to drain ICE candidate:', e);
-      }
+  // Securely call Next.js Cloudflare Calls API reverse proxy
+  const callAPI = async (action: string, payload: Record<string, any>) => {
+    const res = await fetch('/api/call/session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action, ...payload }),
+    });
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(`Cloudflare Calls API relayer error: ${errText}`);
     }
+    return res.json();
+  };
+
+  // Push local track to Cloudflare Calls SFU
+  const pushLocalTrack = async (pc: RTCPeerConnection, track: MediaStreamTrack, stream: MediaStream, trackName: string) => {
+    pc.addTrack(track, stream);
+    
+    // Create new offer negotiating the new track
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+
+    const sender = pc.getSenders().find(s => s.track === track);
+    const transceiver = pc.getTransceivers().find(t => t.sender === sender);
+    const mid = transceiver?.mid || '';
+
+    // Call relayer API to add the track to the session
+    const data = await callAPI('addTrack', {
+      sessionId: sessionIdRef.current,
+      offerSdp: offer.sdp,
+      trackName,
+      mid,
+    });
+
+    // Set the Answer from Cloudflare
+    await pc.setRemoteDescription(new RTCSessionDescription({
+      type: 'answer',
+      sdp: data.sessionDescription.sdp,
+    }));
+  };
+
+  // Pull remote track from Cloudflare Calls SFU
+  const pullRemoteTrack = useCallback(async (remoteSessionId: string, trackName: string, kind: 'audio' | 'video') => {
+    const pc = pcRef.current;
+    if (!pc || !sessionIdRef.current) return;
+
+    // Add a receive-only transceiver to prepare for the remote track
+    pc.addTransceiver(kind, { direction: 'recvonly' });
+
+    // Create a new offer negotiating the subscription to the remote track
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+
+    // Call relayer API to pull the track into our session
+    const data = await callAPI('pullTrack', {
+      sessionId: sessionIdRef.current,
+      offerSdp: offer.sdp,
+      remoteSessionId,
+      trackName,
+    });
+
+    // Set the Answer from Cloudflare
+    await pc.setRemoteDescription(new RTCSessionDescription({
+      type: 'answer',
+      sdp: data.sessionDescription.sdp,
+    }));
   }, []);
 
-  // ─── Handle signaling message ────────────────────────────
+  // Handle incoming DO WebSocket signals (e.g. metadata about remote publisher)
   const handleSignal = useCallback(
-    async (msg: { role: string; type: string; payload?: unknown }) => {
+    async (msg: { role: string; type: string; payload?: any }) => {
       if (!mountedRef.current) return;
 
       try {
-        if (msg.type === 'join') {
-          const pc = pcRef.current;
-          if (pc && isAdmin) {
-            const offer = await pc.createOffer();
-            await pc.setLocalDescription(offer);
-            send('offer', offer);
-          }
-        } else if (msg.type === 'offer') {
-          if (!localStreamRef.current) {
-            try {
-              const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-              localStreamRef.current = stream;
-              setLocalStream(stream);
-            } catch {
-              setCallStatus('error');
-              return;
-            }
-          }
-          const pc = pcRef.current || makePeerConnection();
-          localStreamRef.current!.getTracks().forEach((t) => {
-            if (!pc.getSenders().find((s) => s.track === t)) {
-              pc.addTrack(t, localStreamRef.current!);
-            }
-          });
-          await pc.setRemoteDescription(new RTCSessionDescription(msg.payload as RTCSessionDescriptionInit));
-          remoteDescReady.current = true;
-          await drainIce();
-          const answer = await pc.createAnswer();
-          await pc.setLocalDescription(answer);
-          send('answer', answer);
+        if (msg.type === 'join' || msg.type === 'update-tracks') {
+          const { sessionId: remoteSessionId, audioTrackName, videoTrackName } = msg.payload;
+          if (!remoteSessionId) return;
+
+          remoteSessionIdRef.current = remoteSessionId;
           
-          setCallStatus((prev) => (prev === 'active' ? 'active' : 'ringing'));
-        } else if (msg.type === 'answer') {
-          const pc = pcRef.current;
-          if (pc && pc.signalingState === 'have-local-offer') {
-            await pc.setRemoteDescription(new RTCSessionDescription(msg.payload as RTCSessionDescriptionInit));
-            remoteDescReady.current = true;
-            await drainIce();
+          if (audioTrackName) {
+            remoteAudioTrackNameRef.current = audioTrackName;
+            await pullRemoteTrack(remoteSessionId, audioTrackName, 'audio');
           }
-        } else if (msg.type === 'candidate') {
-          const pc = pcRef.current;
-          if (pc?.remoteDescription && remoteDescReady.current) {
-            try {
-              await pc.addIceCandidate(new RTCIceCandidate(msg.payload as RTCIceCandidateInit));
-            } catch (e) {
-              console.warn('[WebRTC] Failed to add ICE candidate:', e);
-            }
-          } else {
-            iceQueue.current.push(msg.payload as RTCIceCandidateInit);
+          if (videoTrackName) {
+            remoteVideoTrackNameRef.current = videoTrackName;
+            await pullRemoteTrack(remoteSessionId, videoTrackName, 'video');
           }
+
+          setCallStatus('active');
+          setConnected(true);
         } else if (msg.type === 'leave') {
           cleanupRTC();
           setConnected(false);
@@ -187,10 +155,10 @@ export function useWebRTCCall(roomId: string, isAdmin: boolean) {
           setCallStatus('ended');
         }
       } catch (err) {
-        console.error('[WebRTC] Signal error:', err);
+        console.error('[Cloudflare Calls SFU] Signal error:', err);
       }
     },
-    [isAdmin, makePeerConnection, drainIce, send, cleanupRTC]
+    [pullRemoteTrack, cleanupRTC]
   );
 
   const sendChatMessage = useCallback((text: string) => {
@@ -208,13 +176,11 @@ export function useWebRTCCall(roomId: string, isAdmin: boolean) {
         type: 'CHAT_MESSAGE',
         payload: chatMsg
       }));
-      
-      // Add own message locally
       setMessages((prev) => [...prev, chatMsg]);
     }
   }, [myRole]);
 
-  // ─── Subscribe to signaling on mount ─────────────────────
+  // Subscribe to room DO WebSockets signaling on mount
   useEffect(() => {
     if (!roomId) return;
     mountedRef.current = true;
@@ -223,7 +189,6 @@ export function useWebRTCCall(roomId: string, isAdmin: boolean) {
     let reconnectDelay = 1000;
     let isCleanup = false;
 
-    // Establish dynamic WebSocket connection directly to the Durable Object signaling server
     const connect = () => {
       if (isCleanup) return;
 
@@ -237,13 +202,12 @@ export function useWebRTCCall(roomId: string, isAdmin: boolean) {
       ws.onopen = () => {
         console.log(`[WebRTCCall WS] Connected to call room ${roomId} as ${myRole}`);
         if (mountedRef.current) setCallStatus('ready');
-        reconnectDelay = 1000; // Reset
+        reconnectDelay = 1000;
       };
 
       ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
-          // Parse signals received from other peers in the room
           if (data.type === 'signal') {
             if (data.role === myRole) return;
             handleSignal({
@@ -252,7 +216,6 @@ export function useWebRTCCall(roomId: string, isAdmin: boolean) {
               payload: data.payload
             });
           } else if (data.type === 'CHAT_MESSAGE') {
-            // Receive chat message from peer in the same room
             if (data.payload && data.payload.sender !== myRole) {
               setMessages((prev) => [...prev, data.payload]);
             }
@@ -287,7 +250,7 @@ export function useWebRTCCall(roomId: string, isAdmin: boolean) {
     };
   }, [roomId, myRole, handleSignal, cleanupRTC]);
 
-  // ─── Public: join the call ───────────────────────────────
+  // Join the Call (Initiate session and publish stream to Cloudflare Calls SFU)
   const joinCall = useCallback(async () => {
     try {
       if (!navigator.mediaDevices?.getUserMedia) {
@@ -297,27 +260,79 @@ export function useWebRTCCall(roomId: string, isAdmin: boolean) {
 
       setCallStatus('ringing');
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-      
       localStreamRef.current = stream;
       setLocalStream(stream);
 
-      const pc = makePeerConnection();
-      stream.getTracks().forEach((t) => pc.addTrack(t, stream));
+      // Establish PeerConnection to Cloudflare
+      const pc = new RTCPeerConnection({
+        iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+      });
 
-      if (isAdmin) {
-        const offer = await pc.createOffer();
-        await pc.setLocalDescription(offer);
-        send('offer', offer);
-      } else {
-        send('join');
+      pc.ontrack = (e) => {
+        if (!mountedRef.current) return;
+        console.log('[Cloudflare Calls SFU] Remote track received:', e.track.kind, e.track.id);
+
+        if (!remoteStreamRef.current) {
+          remoteStreamRef.current = new MediaStream();
+        }
+
+        const exists = remoteStreamRef.current.getTracks().find((t) => t.id === e.track.id);
+        if (!exists) {
+          remoteStreamRef.current.addTrack(e.track);
+        }
+
+        setRemoteStream(new MediaStream(remoteStreamRef.current.getTracks()));
+        setConnected(true);
+        setCallStatus('active');
+      };
+
+      pc.oniceconnectionstatechange = () => {
+        if (!mountedRef.current) return;
+        const s = pc.iceConnectionState;
+        if (s === 'disconnected' || s === 'failed' || s === 'closed') {
+          setConnected(false);
+          setCallStatus('ended');
+        }
+      };
+
+      pcRef.current = pc;
+
+      // 1. Create session with Cloudflare Calls
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+
+      const sessionData = await callAPI('createSession', { offerSdp: offer.sdp });
+      sessionIdRef.current = sessionData.sessionId;
+
+      await pc.setRemoteDescription(new RTCSessionDescription({
+        type: 'answer',
+        sdp: sessionData.sessionDescription.sdp,
+      }));
+
+      // 2. Publish local microphone track
+      const audioTrackName = `audio-${myRole}-${Date.now()}`;
+      await pushLocalTrack(pc, stream.getAudioTracks()[0], stream, audioTrackName);
+
+      // 3. Broadcast join signaling including sessionId and track names
+      send('join', {
+        sessionId: sessionData.sessionId,
+        audioTrackName,
+      });
+
+      // If the other peer has already joined, ask them to update or renegotiate
+      if (!isAdmin) {
+        send('update-tracks', {
+          sessionId: sessionData.sessionId,
+          audioTrackName,
+        });
       }
     } catch (err) {
-      console.error('[WebRTC] Join error:', err);
+      console.error('[Cloudflare Calls SFU] Join error:', err);
       setCallStatus('error');
     }
-  }, [isAdmin, makePeerConnection, send]);
+  }, [myRole, send, isAdmin]);
 
-  // ─── Public: end the call ────────────────────────────────
+  // End the Call
   const endCall = useCallback(() => {
     send('leave');
     cleanupRTC();
@@ -326,7 +341,7 @@ export function useWebRTCCall(roomId: string, isAdmin: boolean) {
     setCallStatus('ended');
   }, [send, cleanupRTC]);
 
-  // ─── Public: toggle mic ──────────────────────────────────
+  // Toggle Microphone
   const toggleMic = useCallback((): boolean => {
     const track = localStreamRef.current?.getAudioTracks()[0];
     if (track) {
@@ -336,17 +351,17 @@ export function useWebRTCCall(roomId: string, isAdmin: boolean) {
     return false;
   }, []);
 
-  // ─── Public: toggle video ────────────────────────
+  // Toggle Video (Camera stream)
   const toggleVideo = useCallback(async (): Promise<boolean> => {
     const pc = pcRef.current;
     const stream = localStreamRef.current;
-    if (!stream) return false;
+    if (!stream || !pc || !sessionIdRef.current) return false;
 
     let videoTrack = stream.getVideoTracks()[0];
 
     if (!videoTrack) {
       try {
-        console.log('[WebRTC] Upgrading stream to include camera on-demand...');
+        console.log('[Cloudflare Calls SFU] Upgrading stream to include camera on-demand...');
         
         const oldAudioTrack = stream.getAudioTracks()[0];
         if (oldAudioTrack) {
@@ -354,60 +369,46 @@ export function useWebRTCCall(roomId: string, isAdmin: boolean) {
         }
 
         const unifiedStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
-        
         localStreamRef.current = unifiedStream;
         setLocalStream(unifiedStream);
 
+        // Update audio sender track
         const newAudioTrack = unifiedStream.getAudioTracks()[0];
+        const audioSender = pc.getSenders().find(s => s.track?.kind === 'audio');
+        if (audioSender && newAudioTrack) {
+          await audioSender.replaceTrack(newAudioTrack);
+        }
+
         const newVideoTrack = unifiedStream.getVideoTracks()[0];
+        if (newVideoTrack) {
+          const videoTrackName = `video-${myRole}-${Date.now()}`;
+          await pushLocalTrack(pc, newVideoTrack, unifiedStream, videoTrackName);
 
-        if (pc) {
-          const audioSender = pc.getSenders().find(s => s.track?.kind === 'audio');
-          if (audioSender && newAudioTrack) {
-            await audioSender.replaceTrack(newAudioTrack);
-          }
-
-          if (newVideoTrack) {
-            pc.addTrack(newVideoTrack, unifiedStream);
-            
-            const offer = await pc.createOffer();
-            await pc.setLocalDescription(offer);
-            send('offer', offer);
-          }
+          // Broadcast metadata update containing the video track
+          send('update-tracks', {
+            sessionId: sessionIdRef.current,
+            audioTrackName: pc.getSenders().find(s => s.track?.kind === 'audio')?.track?.id || '',
+            videoTrackName,
+          });
         }
         return true;
       } catch (e) {
-        console.error('[WebRTC] Failed to upgrade stream for camera on-demand:', e);
-        
-        try {
-          const fallbackStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-          localStreamRef.current = fallbackStream;
-          setLocalStream(fallbackStream);
-          if (pc) {
-            const audioSender = pc.getSenders().find(s => s.track?.kind === 'audio');
-            const newAudio = fallbackStream.getAudioTracks()[0];
-            if (audioSender && newAudio) {
-              await audioSender.replaceTrack(newAudio);
-            }
-          }
-        } catch (fallbackError) {
-          console.error('[WebRTC] Fallback stream recovery failed:', fallbackError);
-        }
+        console.error('[Cloudflare Calls SFU] Failed to upgrade stream for camera on-demand:', e);
         return false;
       }
     } else {
       videoTrack.enabled = !videoTrack.enabled;
       return videoTrack.enabled;
     }
-  }, [send]);
+  }, [myRole, send]);
 
-  // ─── Connection Timeout Guard ───────────────────
+  // Connection Timeout Guard
   useEffect(() => {
     if (callStatus === 'ringing' && !connected) {
       const timeoutMs = isAdmin ? 15000 : 60000;
       const timer = setTimeout(() => {
         if (mountedRef.current && !connected) {
-          console.warn('[WebRTC] Connection timed out: Peer is offline.');
+          console.warn('[Cloudflare Calls SFU] Connection timed out.');
           setCallStatus('error');
           cleanupRTC();
         }
@@ -422,7 +423,7 @@ export function useWebRTCCall(roomId: string, isAdmin: boolean) {
     connecting: 'Connecting to Cloudflare Edge...',
     ready: 'Ready. Press to join.',
     ringing: isAdmin ? 'Ringing visitor...' : 'Waiting for admin...',
-    active: 'Connected securely.',
+    active: 'Connected securely via SFU.',
     ended: 'Call ended.',
     error: isAdmin 
       ? 'Connection failed. Visitor may have disconnected or gone offline.' 
