@@ -98,7 +98,7 @@ export class SyncRoom {
     this.state.acceptWebSocket(server, tags);
 
     // Persist per-connection metadata using structured clone attachment
-    const sessionInfo = { role, sessionId, roomId };
+    const sessionInfo = { role, sessionId, roomId, lastReset: 0, messageCount: 0 };
     server.serializeAttachment(sessionInfo);
     this.sessions.set(server, sessionInfo);
 
@@ -116,10 +116,44 @@ export class SyncRoom {
   async webSocketMessage(ws: any, message: string | ArrayBuffer) {
     try {
       if (typeof message !== "string") return;
+
+      // 1. Fetch connection attachment metadata
+      const senderInfo = ws.deserializeAttachment() || this.sessions.get(ws);
+      if (!senderInfo) return;
+
+      // 2. Token Bucket / Window-based Rate Limiter (5 messages per 1000ms)
+      const now = Date.now();
+      const lastReset = senderInfo.lastReset || 0;
+      let messageCount = senderInfo.messageCount || 0;
+
+      if (now - lastReset > 1000) {
+        senderInfo.lastReset = now;
+        senderInfo.messageCount = 1;
+      } else {
+        senderInfo.messageCount = messageCount + 1;
+        if (senderInfo.messageCount > 5) {
+          console.warn(`[SyncRoom Rate Limiter] Session ${senderInfo.sessionId || 'N/A'} exceeded limit: ${senderInfo.messageCount} msg/sec. Dropping packet.`);
+          // Persist updated counters
+          ws.serializeAttachment(senderInfo);
+          this.sessions.set(ws, senderInfo);
+          return; // Instantly silently drop the flood packet to protect V8 CPU
+        }
+      }
+
+      // Persist updated counters back to the hibernation context
+      ws.serializeAttachment(senderInfo);
+      this.sessions.set(ws, senderInfo);
+
       const data = JSON.parse(message);
 
-      const senderInfo = this.sessions.get(ws) || ws.deserializeAttachment();
-      if (!senderInfo) return;
+      // 3. Zero-Trust Command Authentication Guard
+      if (data.type === "intervene" || data.type === "SPECTATE_COMMAND") {
+        if (senderInfo.role !== "admin") {
+          console.error(`[SyncRoom Security Alert] Role spoofing attempt detected from session ${senderInfo.sessionId || 'N/A'} (role: ${senderInfo.role}). Severing connection.`);
+          ws.close(1008, "Policy Violation: Unauthorized Administrative Command");
+          return;
+        }
+      }
 
       // Visitor sending state/coordinates updates
       if (data.type === "sync" && senderInfo.role === "visitor") {
